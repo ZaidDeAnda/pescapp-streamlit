@@ -23,7 +23,7 @@ def load_firebase_creds():
 
 @st.cache_resource
 def obtain_firestore_client():
-    cred = credentials.Certificate(load_firebase_creds)
+    cred = credentials.Certificate(load_firebase_creds())
     firebase_admin.initialize_app(cred)
 
     db = firestore.client()
