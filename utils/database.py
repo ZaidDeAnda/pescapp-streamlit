@@ -5,17 +5,17 @@ import json
 
 def load_firebase_creds():
     creds = {
-        'type' : st.secrets['type'],
-        'project_id' : st.secrets['project_id'],
-        'private_key_id' : st.secrets['private_key_id'],
-        'private_key' : st.secrets['private_key'],
-        'client_email' : st.secrets['client_email'],
-        'client_id' : st.secrets['client_id'],
-        'auth_uri' : st.secrets['auth_uri'],
-        'token_uri' : st.secrets['token_uri'],
-        'auth_provider_x509_cert_url' : st.secrets['auth_provider_x509_cert_url'],
-        'client_x509_cert_url' : st.secrets['client_x509_cert_url'],
-        'universe_domain' : st.secrets['universe_domain'],
+        'type' : st.secrets['creds']['type'],
+        'project_id' : st.secrets['creds']['project_id'],
+        'private_key_id' : st.secrets['creds']['private_key_id'],
+        'private_key' : st.secrets['creds']['private_key'],
+        'client_email' : st.secrets['creds']['client_email'],
+        'client_id' : st.secrets['creds']['client_id'],
+        'auth_uri' : st.secrets['creds']['auth_uri'],
+        'token_uri' : st.secrets['creds']['token_uri'],
+        'auth_provider_x509_cert_url' : st.secrets['creds']['auth_provider_x509_cert_url'],
+        'client_x509_cert_url' : st.secrets['creds']['client_x509_cert_url'],
+        'universe_domain' : st.secrets['creds']['universe_domain'],
     }
 
     return creds
