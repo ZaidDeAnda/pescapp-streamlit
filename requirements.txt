@@ -1,5 +1,5 @@
-streamlit==1.44
-folium==0.19.4
+streamlit
+folium
 streamlit-folium
-pandas==1.4.4
-firebase_admin==6.6.0
+pandas
+firebase_admin
