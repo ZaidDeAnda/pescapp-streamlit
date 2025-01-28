@@ -1,3 +1,9 @@
+<div align='center'>
+   <img src='https://github.com/user-attachments/assets/1c540dd9-7824-4921-8872-e1aef2c407b5' width='500px' />
+</div>
+
+---
+
 # Pescapp 🎣
 
 Pescapp is a web application built with Streamlit that visualizes fishing routes on an interactive map. The application connects to Firebase to fetch and display route data.
@@ -77,7 +83,7 @@ streamlit run app.py
 The application will be available at `http://localhost:8501`
 
 ## Project Structure
-
+```
 pescapp-streamlit/
 ├── app.py # Main Streamlit application
 ├── requirements.txt # Python dependencies
@@ -90,7 +96,7 @@ pescapp-streamlit/
 ├── .streamlit/ # Streamlit configuration
 │ └── secrets.toml # Secrets configuration
 └── creds.json # Firebase credentials
-
+```
 
 
 ## Features
