@@ -6,124 +6,104 @@
 
 # Pescapp 🎣
 
-Pescapp is a web application built with Streamlit that visualizes fishing routes on an interactive map. The application connects to Firebase to fetch and display route data.
+Pescapp es una aplicación web construida con Streamlit que visualiza rutas de pesca en un mapa interactivo. La aplicación se conecta a Firebase para obtener y mostrar los datos de las rutas.
 
-## Technologies Used
+## Tecnologías Utilizadas
 
 - Python 3.8+
 - Streamlit
 - Firebase Admin SDK
-- Folium (for map visualization)
+- Folium (para visualización de mapas)
 - Pandas
 
-## Prerequisites
+## Requisitos Previos
 
-Before running this project, make sure you have:
+Antes de ejecutar este proyecto, asegúrate de tener:
 
-- Python 3.8 or higher installed
-- A Firebase project set up with Firestore
-- Firebase credentials (service account key)
+- Python 3.8 o superior instalado
+- Un proyecto de Firebase configurado con Firestore
+- Credenciales de Firebase (clave de cuenta de servicio)
 
-## Installation
+## Instalación
 
-1. Clone the repository:
+1. Clona el repositorio:
 ```bash
 git clone https://github.com/yourusername/pescapp-streamlit.git
 cd pescapp-streamlit
 ```
 
-2. Create and activate a virtual environment:
+2. Crea y activa un entorno virtual:
 
 ```bash
-# On Windows
+# En Windows
 python -m venv venv
 .\venv\Scripts\activate
 
-# On macOS/Linux
+# En macOS/Linux
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. Install the required dependencies:
+3. Instala las dependencias requeridas:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Set up Firebase credentials:
-   - Create a `creds.json` file in the root directory
-   - Add your Firebase service account credentials to this file
+4. Configura las credenciales de Firebase:
+   - Crea un archivo `creds.json` en el directorio raíz
+   - Agrega las credenciales de tu cuenta de servicio de Firebase a este archivo
 
-## Environment Setup
+## Ejecución de la Aplicación
 
-The application expects Firebase credentials to be available as Streamlit secrets. You can set these up by:
-
-1. Creating a `.streamlit/secrets.toml` file with your Firebase credentials:
-```toml
-type = "service_account"
-project_id = "your-project-id"
-private_key_id = "your-private-key-id"
-private_key = "your-private-key"
-client_email = "your-client-email"
-client_id = "your-client-id"
-auth_uri = "https://accounts.google.com/o/oauth2/auth"
-token_uri = "https://oauth2.googleapis.com/token"
-auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-client_x509_cert_url = "your-client-cert-url"
-universe_domain = "googleapis.com"
-```
-
-## Running the Application
-
-To run the application locally:
+Para ejecutar la aplicación localmente:
 
 ```bash
 streamlit run app.py
 ```
 
-The application will be available at `http://localhost:8501`
+La aplicación estará disponible en `http://localhost:8501`
 
-## Project Structure
+## Estructura del Proyecto
 ```
 pescapp-streamlit/
-├── app.py # Main Streamlit application
-├── requirements.txt # Python dependencies
-├── .gitignore # Git ignore file
-├── README.md # Project documentation
-├── assets/ # Static assets
-│ └── Elipse.png # Map marker icon
-├── utils/ # Utility functions
-│ └── database.py # Firebase database operations
-├── .streamlit/ # Streamlit configuration
-│ └── secrets.toml # Secrets configuration
-└── creds.json # Firebase credentials
+├── app.py # Aplicación principal de Streamlit
+├── requirements.txt # Dependencias de Python
+├── .gitignore # Archivo de Git ignore
+├── README.md # Documentación del proyecto
+├── assets/ # Recursos estáticos
+│ └── Elipse.png # Icono de marcador del mapa
+├── utils/ # Funciones de utilidad
+│ └── database.py # Operaciones con la base de datos Firebase
+├── .streamlit/ # Configuración de Streamlit
+│ └── secrets.toml # Configuración de secretos
+└── creds.json # Credenciales de Firebase
 ```
 
+## Funcionalidades
 
-## Features
+- Visualización de rutas de pesca en un mapa interactivo
+- Selección de diferentes viajes de pesca por fecha
+- Visualización de puntos de ruta con marcadores personalizados
+- Caminos de rutas mostrados como líneas conectadas
+- Integración con Firebase para almacenamiento y recuperación de datos
 
-- Display of fishing routes on an interactive map
-- Selection of different fishing trips by date
-- Visualization of route points with custom markers
-- Route paths shown as connected lines
-- Firebase integration for data storage and retrieval
+## Estructura de la Base de Datos Firebase
 
-## Firebase Database Structure
+La aplicación espera las siguientes colecciones en Firestore:
 
-The application expects the following collections in Firestore:
+- `travels`: Contiene documentos con información de los viajes
+  - Campos: `travel_id`, `timestamp`
+- `coords`: Contiene información de coordenadas para cada viaje
+  - Campos: `travel_id`, `coords` (con `lat` y `lon`), `timestamp`
 
-- `travels`: Contains documents with travel information
-  - Fields: `travel_id`, `timestamp`
-- `coords`: Contains coordinate information for each travel
-  - Fields: `travel_id`, `coords` (with `lat` and `lon`), `timestamp`
+## Contribuciones
 
-## Contributing
+1. Haz un fork del repositorio
+2. Crea tu rama de característica (`git checkout -b feature/AmazingFeature`)
+3. Realiza tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Sube la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## Licencia
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Este proyecto está licenciado bajo la Licencia MIT - consulta el archivo LICENSE para más detalles.
