@@ -28,9 +28,21 @@ def main():
     # Initialize Firestore client
     db = obtain_firestore_client()
     
-    # Get user role
-    user_role = st.session_state.get('user_role', 'user')
+    # Get user email from session state
     user_email = st.session_state['user_email']
+    
+    # Get user role directly from the database if not already in session_state
+    if 'user_role' not in st.session_state:
+        user_role = get_user_role(db, user_email)
+        st.session_state['user_role'] = user_role
+    else:
+        user_role = st.session_state['user_role']
+    
+    # Debug information in an expander
+    with st.expander("Debug Information", expanded=False):
+        st.write(f"User Email: {user_email}")
+        st.write(f"User Role: {user_role}")
+        st.write(f"Session State Keys: {list(st.session_state.keys())}")
 
     # User is authenticated, show dashboard header
     st.sidebar.title(f"Pescapp Dashboard 🎣")
@@ -65,11 +77,21 @@ def main():
         if page == "Mapa de Viajes":
             page_map(db, user_role, user_email)
         elif page == "Estadísticas Generales":
-            page_general_stats(db, user_role, user_email)
+            try:
+                page_general_stats(db, user_role, user_email)
+            except Exception as e:
+                st.error(f"Error en la página de Estadísticas Generales: {str(e)}")
+                import traceback
+                st.error(traceback.format_exc())
         elif page == "Estadísticas por Usuario":
-            page_user_stats(db, user_role, user_email)
+            try:
+                page_user_stats(db, user_role, user_email)
+            except Exception as e:
+                st.error(f"Error en la página de Estadísticas por Usuario: {str(e)}")
+                import traceback
+                st.error(traceback.format_exc())
     except Exception as e:
-        st.error(f"Error inesperado: {str(e)}")
+        st.error(f"Error inesperado en la navegación: {str(e)}")
         import traceback
         st.error(traceback.format_exc())
 

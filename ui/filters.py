@@ -79,11 +79,31 @@ def get_users_to_analyze(db, user_role, user_email, selected_users):
     Returns:
         list: Users to analyze
     """
+    # Add debug information to help troubleshoot
+    st.write(f"Debug - Role: {user_role}, Selected users: {selected_users}")
+    
+    if not selected_users:
+        # Fallback if selected_users is None or empty
+        if user_role == 'admin':
+            users = get_all_users(db)
+            st.write(f"Debug - All users: {users}")
+            return users
+        elif user_role == 'monitor':
+            users = get_monitor_assigned_users(db, user_email)
+            st.write(f"Debug - Monitor assigned users: {users}")
+            return users
+        else:
+            return [user_email]
+    
     if "Todos" in selected_users:
         if user_role == 'admin':
-            return get_all_users(db)
+            users = get_all_users(db)
+            st.write(f"Debug - All users: {users}")
+            return users
         elif user_role == 'monitor':
-            return get_monitor_assigned_users(db, user_email)
+            users = get_monitor_assigned_users(db, user_email)
+            st.write(f"Debug - Monitor assigned users: {users}")
+            return users
         else:
             return [user_email]
     else:

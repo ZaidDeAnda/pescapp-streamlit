@@ -169,10 +169,10 @@ def obtain_coords_by_id(travel_id, db):
         # Extract the actual travel ID from the combined string
         actual_id = travel_id.split(' - ')[1]
         
-        # Query the coords collection instead of looking for a subcollection
-        # This matches the db_structure.md where coords is a top-level collection
+        # Query the coords collection without using order_by to avoid index requirement
+        # This is a simpler approach that doesn't require an index
         coords_ref = db.collection('coords').where('trip_id', '==', actual_id)
-        coords = coords_ref.order_by('timestamp').stream()
+        coords = coords_ref.stream()
         
         coord_list = []
         for coord in coords:
@@ -191,6 +191,10 @@ def obtain_coords_by_id(travel_id, db):
                 elif hasattr(coord_data['timestamp'], 'replace'):
                     coord_data['timestamp'] = coord_data['timestamp'].replace(tzinfo=None)
             coord_list.append(coord_data)
+        
+        # Sort the coordinates by timestamp after fetching them
+        # This moves the sorting to the client side instead of requiring a database index
+        coord_list.sort(key=lambda x: x.get('timestamp', 0))
             
         return coord_list
     except Exception as e:

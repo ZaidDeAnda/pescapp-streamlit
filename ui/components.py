@@ -20,11 +20,6 @@ def create_map(coord_list, height=500):
         return None
         
     try:
-        # Handle different possible field names in coord data
-        # Print first coordinate for debugging
-        if len(coord_list) > 0:
-            st.write("Debug - First coordinate:", coord_list[0])
-            
         # Function to get latitude value, handling different possible field names
         def get_lat(coord):
             if "lat" in coord:
@@ -32,7 +27,6 @@ def create_map(coord_list, height=500):
             elif "latitude" in coord:
                 return coord["latitude"]
             else:
-                st.error(f"No latitude field found in coordinate data: {list(coord.keys())}")
                 return 0
                 
         # Function to get longitude value, handling different possible field names
@@ -44,7 +38,6 @@ def create_map(coord_list, height=500):
             elif "longitude" in coord:
                 return coord["longitude"]
             else:
-                st.error(f"No longitude field found in coordinate data: {list(coord.keys())}")
                 return 0
         
         # Center map on first point
@@ -85,8 +78,6 @@ def create_map(coord_list, height=500):
         
     except Exception as e:
         st.error(f"Error al crear el mapa: {str(e)}")
-        import traceback
-        st.error(traceback.format_exc())
         return None
 
 def display_travel_stats(coord_list, travel_info=None):
