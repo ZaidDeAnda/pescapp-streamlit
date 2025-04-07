@@ -51,6 +51,11 @@ def page_map(db, user_role, user_email):
     # Fetch coordinates for the selected travel
     try:
         coord_list = obtain_coords_by_id(seleccion_dia, db)
+        # Debug information
+        st.write(f"Travel ID: {seleccion_dia.split(' - ')[1]}")
+        st.write(f"Number of coordinates found: {len(coord_list)}")
+        if coord_list and len(coord_list) > 0:
+            st.write("Sample coordinate data keys:", list(coord_list[0].keys()))
     except Exception as e:
         st.error(f"Error al obtener coordenadas: {str(e)}")
         return

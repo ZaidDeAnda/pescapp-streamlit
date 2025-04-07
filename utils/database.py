@@ -169,7 +169,9 @@ def obtain_coords_by_id(travel_id, db):
         # Extract the actual travel ID from the combined string
         actual_id = travel_id.split(' - ')[1]
         
-        coords_ref = db.collection('travels').document(actual_id).collection('coordinates')
+        # Query the coords collection instead of looking for a subcollection
+        # This matches the db_structure.md where coords is a top-level collection
+        coords_ref = db.collection('coords').where('trip_id', '==', actual_id)
         coords = coords_ref.order_by('timestamp').stream()
         
         coord_list = []
