@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .devcontainer/devcontainer.json
+creds.json

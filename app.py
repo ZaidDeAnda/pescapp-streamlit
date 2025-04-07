@@ -1,50 +1,77 @@
 import json
-
 import streamlit as st
-import folium
-from streamlit_folium import st_folium
+import pandas as pd
+from datetime import datetime, timedelta
 
-from utils.database import obtain_firestore_client, obtain_available_travels, obtain_coords_by_id
+from utils.database import (
+    obtain_firestore_client, 
+    get_user_role,
+    manage_user_roles
+)
+from utils.auth_module import Authentication
+from ui.navigation import navigation
+from pages.map_page import page_map
+from pages.general_stats import page_general_stats
+from pages.user_stats import page_user_stats
 
-st.header("Pescapp 🎣🐟🐠🐡🦈")
+# Configure the page
+st.set_page_config(page_title="Pescapp Dashboard", page_icon="🎣", layout="wide")
 
-db = obtain_firestore_client()
+# Initialize authentication
+auth = Authentication()
 
-available_travels = obtain_available_travels(db)
+def main():
+    # Authenticate user
+    if not auth.authenticate():
+        return
 
-seleccion_dia = st.selectbox("Escoge la ruta de interés", available_travels)
+    # Initialize Firestore client
+    db = obtain_firestore_client()
+    
+    # Get user role
+    user_role = st.session_state.get('user_role', 'user')
+    user_email = st.session_state['user_email']
 
-coord_list = obtain_coords_by_id(seleccion_dia, db)
+    # User is authenticated, show dashboard header
+    st.sidebar.title(f"Pescapp Dashboard 🎣")
+    st.sidebar.write(f"Usuario: {user_email}")
+    st.sidebar.write(f"Rol: {user_role.capitalize()}")
 
-# Crear un mapa centrado en el primer punto
-inicio = coord_list[0]
-mapa = folium.Map(location=[inicio["lat"], inicio["lon"]], zoom_start=13)
+    # Add logout button
+    if st.sidebar.button("Cerrar Sesión"):
+        auth.logout()
+        return
+    
+    # Add role management for admins
+    if user_role == 'admin':
+        if st.sidebar.button("Gestionar Usuarios"):
+            st.session_state['show_user_management'] = True
+            st.rerun()
+    
+    # Show user management if requested
+    if st.session_state.get('show_user_management', False):
+        manage_user_roles(db, user_email)
+        
+        if st.button("Volver al Dashboard"):
+            st.session_state['show_user_management'] = False
+            st.rerun()
+        
+        return  # Skip the rest of the dashboard
 
-icon_image = "assets/Elipse.png"
+    # Navigation and page display
+    page = navigation()
+    
+    try:
+        if page == "Mapa de Viajes":
+            page_map(db, user_role, user_email)
+        elif page == "Estadísticas Generales":
+            page_general_stats(db, user_role, user_email)
+        elif page == "Estadísticas por Usuario":
+            page_user_stats(db, user_role, user_email)
+    except Exception as e:
+        st.error(f"Error inesperado: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
 
-# Añadir los puntos y las líneas al mapa
-coordenadas = []
-for i, coord_dict in enumerate(coord_list, start=1):
-    coord = [coord_dict["lat"], coord_dict["lon"]]
-    coordenadas.append(coord)
-    offsetx=-0.0005
-    offsety=0.0005
-    icon = folium.CustomIcon(
-        icon_image,
-        icon_size=(20, 20),
-        icon_anchor=(20, 20),
-    )
-    folium.Marker(
-        location=[coord[0]+offsetx, coord[1]+offsety],
-        popup=f"Punto {i}",
-        icon=icon
-    ).add_to(mapa)
-
-# Añadir líneas que conecten los puntos
-folium.PolyLine(coordenadas, color="blue", weight=2.5, opacity=1).add_to(mapa)
-
-# Mostrar el mapa en Streamlit
-st.components.v1.html(
-        mapa.get_root()._repr_html_(), height=500,
-    )
-
+if __name__ == "__main__":
+    main()

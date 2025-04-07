@@ -2,4 +2,6 @@ streamlit
 folium
 streamlit-folium
 pandas
-firebase_admin
+firebase_admin==5.4.0
+google-cloud-firestore==2.11.1
+plotly
