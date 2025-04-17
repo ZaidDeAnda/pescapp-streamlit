@@ -100,77 +100,113 @@ def get_available_travels():
 
 # Función para obtener las coordenadas de un viaje
 def get_travel_coordinates(travel_id):
-    travel = get_travel(travel_id)
+    """
+    Obtiene las coordenadas geográficas de un viaje específico desde la colección coords.
     
-    if not travel:
-        return None
-    
-    # Verificar si es un viaje de "tracking" o un viaje completo
-    if travel.get("type") == "tracking":
-        # Si es un viaje de tracking, devolver las coordenadas directas
-        lat = travel.get("coords", {}).get("lat")
-        lon = travel.get("coords", {}).get("lon")
+    Args:
+        travel_id (str): ID del viaje
         
-        if lat and lon:
-            return [{
-                "lat": lat,
-                "lon": lon,
-                "timestamp": normalize_timestamp(travel.get("timestamp"))
-            }]
+    Returns:
+        list: Lista de diccionarios con coordenadas o lista vacía si no hay coordenadas
+    """
+    # Verificar que el travel_id no sea None o vacío
+    if not travel_id:
+        print(f"ID de viaje inválido: {travel_id}")
         return []
     
-    # Si es un viaje completo, obtener las coordenadas iniciales y finales
-    initial_coords = travel.get("initial_coords", {})
-    final_coords = travel.get("final_coords", {})
+    # Consultar la colección coords para obtener todas las coordenadas asociadas a este viaje
+    coord_docs = query_documents("coords", "travel_id", "==", travel_id)
     
+    # Si no hay documentos de coordenadas, devolver lista vacía
+    if not coord_docs:
+        print(f"No se encontraron coordenadas para el viaje con ID: {travel_id}")
+        return []
+    
+    # Procesar cada documento de coordenadas
     coordinates = []
+    for coord in coord_docs:
+        # Verificar que tenemos lat y lon válidos
+        lat = coord.get("lat")
+        lon = coord.get("lon")
+        
+        if lat is not None and lon is not None:
+            # Crear diccionario con la información de la coordenada
+            coord_data = {
+                "lat": lat,
+                "lon": lon,
+                "timestamp": normalize_timestamp(coord.get("timestamp")),
+                "travel_id": travel_id
+            }
+            
+            # Añadir campos adicionales si existen
+            for field in ["accuracy", "altitude", "speed", "user_id", "user_email"]:
+                if field in coord:
+                    coord_data[field] = coord.get(field)
+            
+            coordinates.append(coord_data)
     
-    # Añadir coordenadas iniciales si existen
-    if initial_coords and "lat" in initial_coords and "lon" in initial_coords:
-        coordinates.append({
-            "lat": initial_coords["lat"],
-            "lon": initial_coords["lon"],
-            "timestamp": normalize_timestamp(travel.get("timestamp"))
-        })
-    
-    # Añadir coordenadas finales si existen y son diferentes de las iniciales
-    if final_coords and "lat" in final_coords and "lon" in final_coords:
-        # Verificar si las coordenadas finales son diferentes de las iniciales
-        if not coordinates or (
-            final_coords["lat"] != coordinates[0]["lat"] or 
-            final_coords["lon"] != coordinates[0]["lon"]
-        ):
-            coordinates.append({
-                "lat": final_coords["lat"],
-                "lon": final_coords["lon"],
-                "timestamp": normalize_timestamp(travel.get("end_timestamp"))
-            })
+    # Ordenar por timestamp si es posible
+    try:
+        coordinates.sort(key=lambda x: x.get("timestamp", ""))
+    except Exception as e:
+        print(f"Error al ordenar coordenadas: {e}")
     
     return coordinates
 
-# Función para obtener todos los puntos de coordenadas de todos los viajes disponibles
+# Función actualizada para obtener todos los puntos de coordenadas de todos los viajes disponibles
 def get_all_travel_coordinates():
+    """
+    Obtiene todas las coordenadas de todos los viajes disponibles para el usuario actual.
+    
+    Returns:
+        list: Lista de diccionarios con todas las coordenadas de los viajes disponibles
+    """
+    # Obtener todos los viajes disponibles según el rol del usuario
     travels = get_available_travels()
+    
+    if not travels:
+        return []
     
     all_coordinates = []
     for travel in travels:
+        # Extraer el ID del viaje
         travel_id = travel.get("id") or travel.get("travel_id")
-        if travel_id:
-            try:
-                coordinates = get_travel_coordinates(travel_id)
-                if coordinates:
-                    # Añadir información del viaje a cada punto
-                    for coord in coordinates:
-                        coord["travel_id"] = travel_id
-                        # Si hay información de usuario en el viaje, añadirla
-                        if "user_id" in travel:
-                            coord["user_id"] = travel["user_id"]
-                        if "user_email" in travel:
-                            coord["user_email"] = travel["user_email"]
-                    
-                    all_coordinates.extend(coordinates)
-            except Exception as e:
-                print(f"Error al procesar coordenadas del viaje {travel_id}: {e}")
+        if not travel_id:
+            continue
+        
+        try:
+            # Obtener coordenadas para este viaje
+            coordinates = get_travel_coordinates(travel_id)
+            
+            # Verificar que tenemos coordenadas (nunca debería ser None, pero por si acaso)
+            if coordinates is None:
+                print(f"get_travel_coordinates devolvió None para el viaje {travel_id}")
+                continue
+                
+            if not coordinates:  # Lista vacía
+                continue
+                
+            # Añadir información del viaje a cada punto
+            for coord in coordinates:
+                # Asegurarse de que el travel_id esté en la coordenada
+                coord["travel_id"] = travel_id
+                
+                # Si hay información de usuario en el viaje, añadirla
+                if "user_id" in travel and "user_id" not in coord:
+                    coord["user_id"] = travel["user_id"]
+                if "user_email" in travel and "user_email" not in coord:
+                    coord["user_email"] = travel["user_email"]
+                
+                # Añadir información del tipo de viaje si está disponible
+                if "type" in travel and "travel_type" not in coord:
+                    coord["travel_type"] = travel["type"]
+            
+            # Añadir las coordenadas al conjunto total
+            all_coordinates.extend(coordinates)
+            
+        except Exception as e:
+            print(f"Error al procesar coordenadas del viaje {travel_id}: {str(e)}")
+            # Continuar con el siguiente viaje en caso de error
     
     return all_coordinates
 
