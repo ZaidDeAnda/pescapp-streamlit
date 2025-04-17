@@ -486,44 +486,87 @@ def main():
                     # Añadir controles al mapa
                     folium.LayerControl().add_to(m)
                     
-                    # Crear marcadores para cada coordenada
-                    for idx, row in valid_coords.iterrows():
-                        # Crear texto para el popup
-                        popup_text = f"<b>ID de Viaje:</b> {row.get('travel_id', 'N/A')}<br>"
-                        
-                        if 'user_email' in row and pd.notna(row['user_email']):
-                            popup_text += f"<b>Usuario:</b> {row['user_email']}<br>"
-                        
-                        if 'timestamp' in row and pd.notna(row['timestamp']):
-                            popup_text += f"<b>Fecha:</b> {row['timestamp']}<br>"
-                        
-                        if 'accuracy' in row and pd.notna(row['accuracy']):
-                            popup_text += f"<b>Precisión:</b> {row['accuracy']} m<br>"
-                        
-                        if 'altitude' in row and pd.notna(row['altitude']):
-                            popup_text += f"<b>Altitud:</b> {row['altitude']} m<br>"
-                        
-                        if 'speed' in row and pd.notna(row['speed']):
-                            popup_text += f"<b>Velocidad:</b> {row['speed']} km/h<br>"
-                        
-                        # Crear marcador
-                        folium.Marker(
-                            location=[row['lat'], row['lon']],
-                            popup=folium.Popup(popup_text, max_width=300),
-                            tooltip=f"Viaje: {row.get('travel_id', 'N/A')}"
-                        ).add_to(m)
+                    # Colores para cada viaje
+                    colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 
+                            'lightblue', 'darkgreen', 'cadetblue', 'darkpurple', 
+                            'beige', 'pink', 'gray', 'black', 'lightred', 'lightgreen']
                     
-                    # Añadir círculos para la precisión si está disponible
-                    if 'accuracy' in valid_coords.columns:
-                        for idx, row in valid_coords.iterrows():
-                            if pd.notna(row['accuracy']) and float(row['accuracy']) > 0:
-                                folium.Circle(
-                                    location=[row['lat'], row['lon']],
-                                    radius=float(row['accuracy']),
-                                    color='blue',
-                                    fill=True,
-                                    fill_opacity=0.1
-                                ).add_to(m)
+                    # Obtener lista única de travel_ids
+                    travel_ids = valid_coords['travel_id'].unique()
+                    
+                    # Para cada viaje, procesar sus puntos
+                    for i, travel_id in enumerate(travel_ids):
+                        # Seleccionar color para este viaje
+                        color = colors[i % len(colors)]
+                        
+                        # Filtrar coordenadas para este viaje
+                        travel_coords = valid_coords[valid_coords['travel_id'] == travel_id].copy()
+                        
+                        # Ordenar por timestamp si está disponible, para conectar puntos en orden temporal
+                        if 'timestamp' in travel_coords.columns:
+                            try:
+                                travel_coords['timestamp'] = pd.to_datetime(travel_coords['timestamp'], errors='coerce')
+                                travel_coords = travel_coords.sort_values('timestamp')
+                            except:
+                                # Si hay error al ordenar, usar el orden actual
+                                pass
+                        
+                        # Crear lista de coordenadas para la línea
+                        line_coords = []
+                        
+                        # Añadir marcadores y recopilar coordenadas para la línea
+                        for idx, row in travel_coords.iterrows():
+                            # Añadir a la lista de coordenadas para la línea
+                            line_coords.append([row['lat'], row['lon']])
+                            
+                            # Crear texto para el popup
+                            popup_text = f"<b>ID de Viaje:</b> {travel_id}<br>"
+                            
+                            if 'user_email' in row and pd.notna(row['user_email']):
+                                popup_text += f"<b>Usuario:</b> {row['user_email']}<br>"
+                            
+                            if 'timestamp' in row and pd.notna(row['timestamp']):
+                                popup_text += f"<b>Fecha:</b> {row['timestamp']}<br>"
+                            
+                            if 'accuracy' in row and pd.notna(row['accuracy']):
+                                popup_text += f"<b>Precisión:</b> {row['accuracy']} m<br>"
+                            
+                            if 'altitude' in row and pd.notna(row['altitude']):
+                                popup_text += f"<b>Altitud:</b> {row['altitude']} m<br>"
+                            
+                            if 'speed' in row and pd.notna(row['speed']):
+                                popup_text += f"<b>Velocidad:</b> {row['speed']} km/h<br>"
+                            
+                            # Crear marcador
+                            folium.Marker(
+                                location=[row['lat'], row['lon']],
+                                popup=folium.Popup(popup_text, max_width=300),
+                                tooltip=f"Viaje: {travel_id}",
+                                icon=folium.Icon(color=color, icon='info-sign')
+                            ).add_to(m)
+                        
+                        # Dibujar la línea punteada si hay al menos 2 puntos
+                        if len(line_coords) >= 2:
+                            folium.PolyLine(
+                                locations=line_coords,
+                                color=color,
+                                weight=3,
+                                opacity=0.7,
+                                dash_array='5, 10',  # Crear línea punteada
+                                tooltip=f"Ruta del viaje: {travel_id}"
+                            ).add_to(m)
+                        
+                        # Añadir círculos para la precisión si está disponible
+                        if 'accuracy' in travel_coords.columns:
+                            for idx, row in travel_coords.iterrows():
+                                if pd.notna(row['accuracy']) and float(row['accuracy']) > 0:
+                                    folium.Circle(
+                                        location=[row['lat'], row['lon']],
+                                        radius=float(row['accuracy']),
+                                        color=color,
+                                        fill=True,
+                                        fill_opacity=0.1
+                                    ).add_to(m)
                     
                     # Mostrar el mapa
                     folium_static(m, width=1000, height=600)

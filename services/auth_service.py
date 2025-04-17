@@ -309,3 +309,41 @@ def assign_user_to_monitor(user_id, monitor_id):
     get_collection("assignments").document(assignment_id).set(assignment_data)
     
     return True, "Usuario asignado exitosamente"
+
+# Función para actualizar el rol de un usuario
+def update_user_role(user_id, new_role):
+    try:
+        # Actualizar el rol del usuario en Firestore
+        get_collection("users").document(user_id).update({"role": new_role})
+        
+        return True, f"Rol actualizado a '{new_role}' exitosamente"
+    except Exception as e:
+        return False, f"Error al actualizar rol: {str(e)}"
+
+# Función para verificar token y mantener sesión
+def verify_session_token():
+    if 'user' in st.session_state and 'metadata' in st.session_state['user']:
+        if 'idToken' in st.session_state['user']['metadata']:
+            try:
+                # Verificar token con Firebase
+                firebase_auth = get_pyrebase_auth()
+                firebase_auth.get_account_info(st.session_state['user']['metadata']['idToken'])
+                return True
+            except:
+                # Token inválido o expirado, intentar actualizar
+                if 'refreshToken' in st.session_state['user']['metadata']:
+                    try:
+                        # Actualizar token
+                        refresh_token = st.session_state['user']['metadata']['refreshToken']
+                        new_token = firebase_auth.refresh(refresh_token)
+                        
+                        # Actualizar token en session_state
+                        st.session_state['user']['metadata']['idToken'] = new_token['idToken']
+                        st.session_state['user']['metadata']['refreshToken'] = new_token['refreshToken']
+                        
+                        return True
+                    except:
+                        # No se pudo actualizar el token
+                        return False
+    
+    return False
