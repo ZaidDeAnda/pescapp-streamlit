@@ -1,99 +1,86 @@
-import json
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
 
-from utils.database import (
-    obtain_firestore_client, 
-    get_user_role,
-    manage_user_roles
+# Configurar la página (DEBE ser la primera llamada a Streamlit)
+st.set_page_config(
+    page_title="Travel Tracker",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-from utils.auth_module import Authentication
-from ui.navigation import navigation
-from pages.map_page import page_map
-from pages.general_stats import page_general_stats
-from pages.user_stats import page_user_stats
 
-# Configure the page
-st.set_page_config(page_title="Pescapp Dashboard", page_icon="🎣", layout="wide")
 
-# Initialize authentication
-auth = Authentication()
+# Importaciones
+import os
+from dotenv import load_dotenv
+from components.auth_class import Authentication
+from components.navigation import setup_sidebar, show_footer
+
+# Cargar variables de entorno
+load_dotenv()
 
 def main():
-    # Authenticate user
-    if not auth.authenticate():
-        return
+    """Función principal de la aplicación"""
+    
+    # Crear instancia de Authentication
+    auth = Authentication()
+    
+    # Verificar autenticación
+    if auth.authenticate():
+        # Usuario autenticado, mostrar contenido principal
+        setup_sidebar()
+        show_main_content(auth)
+    
+    # Mostrar pie de página
+    show_footer()
 
-    # Initialize Firestore client
-    db = obtain_firestore_client()
+def show_main_content(auth):
+    """Mostrar contenido principal para usuarios autenticados"""
     
-    # Get user email from session state
-    user_email = st.session_state['user_email']
+    # Obtener datos del usuario actual
+    user = auth.get_current_user()
     
-    # Get user role directly from the database if not already in session_state
-    if 'user_role' not in st.session_state:
-        user_role = get_user_role(db, user_email)
-        st.session_state['user_role'] = user_role
-    else:
-        user_role = st.session_state['user_role']
+    # Título de bienvenida
+    st.title(f"🌍 Bienvenido a Travel Tracker, {user.get('name', 'Usuario')}")
     
-    # Debug information in an expander
-    with st.expander("Debug Information", expanded=False):
-        st.write(f"User Email: {user_email}")
-        st.write(f"User Role: {user_role}")
-        st.write(f"Session State Keys: {list(st.session_state.keys())}")
-
-    # User is authenticated, show dashboard header
-    st.sidebar.title(f"Pescapp Dashboard 🎣")
-    st.sidebar.write(f"Usuario: {user_email}")
-    st.sidebar.write(f"Rol: {user_role.capitalize()}")
-
-    # Add logout button
-    if st.sidebar.button("Cerrar Sesión"):
-        auth.logout()
-        return
+    # Información de la aplicación
+    st.write("Selecciona una opción del menú lateral para comenzar.")
     
-    # Add role management for admins
-    if user_role == 'admin':
-        if st.sidebar.button("Gestionar Usuarios"):
-            st.session_state['show_user_management'] = True
-            st.rerun()
+    # Mostrar resumen de opciones disponibles
+    col1, col2, col3 = st.columns(3)
     
-    # Show user management if requested
-    if st.session_state.get('show_user_management', False):
-        manage_user_roles(db, user_email)
+    with col1:
+        st.info("🗺️ **Mapa de Viajes**\n\nVisualiza todos tus viajes en un mapa interactivo.")
+        if st.button("Ver Mapa", use_container_width=True):
+            st.switch_page("pages/02_🗺️_Map.py")
+    
+    with col2:
+        st.info("📊 **Mis Viajes**\n\nConsulta y analiza tus viajes registrados.")
+        if st.button("Ver Mis Viajes", use_container_width=True):
+            st.switch_page("pages/03_📊_My_Travels.py")
+    
+    with col3:
+        # Si es admin, mostrar opción de gestión de usuarios
+        if user.get('role') == 'admin':
+            st.info("👥 **Gestión de Usuarios**\n\nAdministra los usuarios de la aplicación.")
+            if st.button("Gestionar Usuarios", use_container_width=True):
+                st.switch_page("pages/04_👥_Users.py")
+        else:
+            st.info("⚙️ **Configuración**\n\nPersonaliza tu experiencia en la aplicación.")
+            if st.button("Configuración", use_container_width=True):
+                st.switch_page("pages/05_⚙️_Settings.py")
+    
+    # Información sobre la aplicación
+    with st.expander("ℹ️ Acerca de Travel Tracker"):
+        st.markdown("""
+        **Travel Tracker** es una aplicación para rastrear y visualizar tus viajes.
         
-        if st.button("Volver al Dashboard"):
-            st.session_state['show_user_management'] = False
-            st.rerun()
+        La aplicación te permite:
+        - Ver tus viajes en un mapa interactivo
+        - Analizar estadísticas de tus viajes
+        - Gestionar tu perfil y preferencias
         
-        return  # Skip the rest of the dashboard
-
-    # Navigation and page display
-    page = navigation()
-    
-    try:
-        if page == "Mapa de Viajes":
-            page_map(db, user_role, user_email)
-        elif page == "Estadísticas Generales":
-            try:
-                page_general_stats(db, user_role, user_email)
-            except Exception as e:
-                st.error(f"Error en la página de Estadísticas Generales: {str(e)}")
-                import traceback
-                st.error(traceback.format_exc())
-        elif page == "Estadísticas por Usuario":
-            try:
-                page_user_stats(db, user_role, user_email)
-            except Exception as e:
-                st.error(f"Error en la página de Estadísticas por Usuario: {str(e)}")
-                import traceback
-                st.error(traceback.format_exc())
-    except Exception as e:
-        st.error(f"Error inesperado en la navegación: {str(e)}")
-        import traceback
-        st.error(traceback.format_exc())
+        Selecciona una opción del menú lateral para comenzar a explorar.
+        """)
 
 if __name__ == "__main__":
     main()

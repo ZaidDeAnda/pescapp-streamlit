@@ -1,7 +1,10 @@
-streamlit
-folium
-streamlit-folium
-pandas
-firebase_admin==5.4.0
-google-cloud-firestore==2.11.1
-plotly
+streamlit==1.32.0
+firebase-admin==6.2.0
+folium==0.14.0
+streamlit-folium==0.15.0
+streamlit-authenticator==0.2.2
+python-dotenv==1.0.0
+pandas==2.0.3
+plotly==5.18.0
+pydeck==0.8.0
+pytz==2023.3

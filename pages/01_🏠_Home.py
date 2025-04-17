@@ -1,0 +1,129 @@
+import streamlit as st
+from components.authentication import require_authentication
+from components.navigation import setup_sidebar, show_header, show_footer
+from services.travel_service import get_available_travels
+import pandas as pd
+
+# Configurar la página
+st.set_page_config(
+    page_title="Travel Tracker - Inicio",
+    page_icon="🏠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Configurar la barra lateral
+setup_sidebar()
+
+# Verificar autenticación
+user = require_authentication()
+
+# Mostrar header
+show_header(
+    "🏠 Bienvenido a Travel Tracker",
+    f"Hola, {user.get('name', 'Usuario')}! Aquí puedes ver un resumen de tus viajes y actividad."
+)
+
+# Obtener datos de viajes
+travels = get_available_travels()
+
+# Función principal
+def main():
+    # Métricas principales
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            label="Total de Viajes", 
+            value=len(travels),
+            delta=None
+        )
+    
+    with col2:
+        # Calcular distancia total (simulación)
+        total_distance = sum(travel.get("distance", 0) for travel in travels)
+        st.metric(
+            label="Distancia Total", 
+            value=f"{total_distance} km",
+            delta=None
+        )
+    
+    with col3:
+        # Obtener el rol del usuario
+        role = user.get("role", "user")
+        st.metric(
+            label="Nivel de Acceso", 
+            value=role.capitalize(),
+            delta=None
+        )
+    
+    # Sección de últimos viajes
+    st.subheader("📋 Últimos Viajes")
+    
+    if travels:
+        # Convertir a DataFrame para mostrar
+        df = pd.DataFrame(travels)
+        
+        # Seleccionar columnas de interés
+        columns_to_show = ["travel_id", "timestamp", "user_email"]
+        
+        # Verificar qué columnas están disponibles
+        available_columns = [col for col in columns_to_show if col in df.columns]
+        
+        if available_columns:
+            # Mostrar los últimos 5 viajes
+            st.dataframe(
+                df[available_columns].head(5),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No hay datos de viajes disponibles para mostrar.")
+    else:
+        st.info("No hay viajes disponibles. ¡Comienza a registrar tus viajes!")
+    
+    # Sección de accesos rápidos
+    st.subheader("⚡ Accesos Rápidos")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Botón para ir al mapa
+        if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
+            st.switch_page("pages/02_🗺️_Map.py")
+    
+    with col2:
+        # Botón para ver mis viajes
+        if st.button("📊 Ver Mis Viajes", use_container_width=True):
+            st.switch_page("pages/03_📊_My_Travels.py")
+    
+    with col3:
+        # Si es admin, mostrar botón de gestión de usuarios
+        if user.get("role") == "admin":
+            if st.button("👥 Gestionar Usuarios", use_container_width=True):
+                st.switch_page("pages/04_👥_Users.py")
+        else:
+            # Si no es admin, mostrar botón de configuración
+            if st.button("⚙️ Configuración", use_container_width=True):
+                st.switch_page("pages/05_⚙️_Settings.py")
+    
+    # Información de la aplicación
+    with st.expander("ℹ️ Acerca de Travel Tracker"):
+        st.markdown("""
+        **Travel Tracker** es una aplicación diseñada para rastrear y visualizar tus viajes.
+        
+        La aplicación te permite:
+        
+        - Visualizar tus viajes en un mapa interactivo
+        - Ver estadísticas de tus viajes
+        - Administrar usuarios y roles (solo administradores)
+        
+        Para comenzar, selecciona una de las opciones del menú lateral.
+        """)
+
+# Ejecutar la función principal
+if __name__ == "__main__":
+    main()
+
+# Mostrar pie de página
+show_footer()
