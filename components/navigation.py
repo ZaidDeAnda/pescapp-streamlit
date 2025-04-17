@@ -19,27 +19,7 @@ def setup_sidebar():
         
         st.sidebar.divider()
         
-        # Enlaces de navegación
-        st.sidebar.subheader("Navegación")
-        
-        # Página principal
-        st.sidebar.page_link("app.py", label="Inicio", icon="🏠")
-        
-        # Mapa
-        st.sidebar.page_link("pages/02_🗺️_Map.py", label="Mapa", icon="🗺️")
-        
-        # Mis viajes
-        st.sidebar.page_link("pages/03_📊_My_Travels.py", label="Mis Viajes", icon="📊")
-        
-        # Gestión de usuarios (solo admin)
-        if user.get("role") == "admin":
-            st.sidebar.page_link("pages/04_👥_Users.py", label="Usuarios", icon="👥")
-        
-        # Configuración
-        st.sidebar.page_link("pages/05_⚙️_Settings.py", label="Configuración", icon="⚙️")
-        
-        st.sidebar.divider()
-        
+
         # Botón de cerrar sesión
         if st.sidebar.button("🚪 Cerrar Sesión"):
             auth.logout()

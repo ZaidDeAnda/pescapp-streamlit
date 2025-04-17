@@ -40,7 +40,13 @@ def get_user_travels(user_id):
 def get_travel(travel_id):
     travel_doc = get_document("travels", travel_id)
     if travel_doc and hasattr(travel_doc, 'exists') and travel_doc.exists:
-        return travel_doc.to_dict()
+        travel_data = travel_doc.to_dict()
+        # Asegurarse de que el ID del documento esté incluido
+        if "id" not in travel_data:
+            travel_data["id"] = travel_id
+        if "travel_id" not in travel_data:
+            travel_data["travel_id"] = travel_id
+        return travel_data
     return None
 
 # Función para obtener todos los viajes disponibles según el rol del usuario
@@ -69,6 +75,8 @@ def get_available_travels():
                 # Añadir el ID del documento si no está presente
                 if "id" not in travel_data:
                     travel_data["id"] = doc.id
+                if "travel_id" not in travel_data:
+                    travel_data["travel_id"] = doc.id
                 all_travels.append(travel_data)
         
         # Ordenar por timestamp (más reciente primero)
@@ -98,10 +106,15 @@ def get_available_travels():
     else:
         return get_user_travels(user_id)
 
-# Función para obtener las coordenadas de un viaje
+# FUNCIÓN CORREGIDA: Obtener las coordenadas de un viaje
 def get_travel_coordinates(travel_id):
     """
-    Obtiene las coordenadas geográficas de un viaje específico desde la colección coords.
+    Obtiene las coordenadas geográficas de un viaje específico.
+    
+    Esta función intenta obtener coordenadas de varias fuentes en este orden:
+    1. Busca en la colección "coords" con el campo travel_id exacto
+    2. Intenta variantes del travel_id (sin prefijo, etc.)
+    3. Extrae coordenadas directamente del documento de viaje si existe
     
     Args:
         travel_id (str): ID del viaje
@@ -109,51 +122,157 @@ def get_travel_coordinates(travel_id):
     Returns:
         list: Lista de diccionarios con coordenadas o lista vacía si no hay coordenadas
     """
-    # Verificar que el travel_id no sea None o vacío
     if not travel_id:
-        print(f"ID de viaje inválido: {travel_id}")
+        print(f"ERROR: ID de viaje inválido o vacío")
         return []
     
-    # Consultar la colección coords para obtener todas las coordenadas asociadas a este viaje
-    coord_docs = query_documents("coords", "travel_id", "==", travel_id)
+    print(f"Buscando coordenadas para viaje: {travel_id}")
     
-    # Si no hay documentos de coordenadas, devolver lista vacía
-    if not coord_docs:
-        print(f"No se encontraron coordenadas para el viaje con ID: {travel_id}")
-        return []
+    # 1. INTENTO: Buscar en colección "coords" con travel_id exacto
+    print(f"INTENTO 1: Buscando en colección 'coords' con travel_id={travel_id}")
+    coords_docs = query_documents("coords", "travel_id", "==", travel_id)
     
-    # Procesar cada documento de coordenadas
-    coordinates = []
-    for coord in coord_docs:
-        # Verificar que tenemos lat y lon válidos
-        lat = coord.get("lat")
-        lon = coord.get("lon")
+    # 2. INTENTO: Si no hay resultados, probar con variantes del ID
+    if not coords_docs:
+        print(f"INTENTO 2: Probando variantes del ID")
         
-        if lat is not None and lon is not None:
-            # Crear diccionario con la información de la coordenada
-            coord_data = {
-                "lat": lat,
-                "lon": lon,
-                "timestamp": normalize_timestamp(coord.get("timestamp")),
-                "travel_id": travel_id
-            }
-            
-            # Añadir campos adicionales si existen
-            for field in ["accuracy", "altitude", "speed", "user_id", "user_email"]:
-                if field in coord:
-                    coord_data[field] = coord.get(field)
-            
-            coordinates.append(coord_data)
+        # Probar con el campo "id" en lugar de "travel_id"
+        coords_docs = query_documents("coords", "id", "==", travel_id)
+        if coords_docs:
+            print(f"Encontradas {len(coords_docs)} coordenadas usando campo 'id'")
+        
+        # Si aún no hay resultados, probar sin prefijo "travel_"
+        if not coords_docs and travel_id.startswith("travel_"):
+            stripped_id = travel_id[7:]
+            print(f"Probando con ID sin prefijo: {stripped_id}")
+            coords_docs = query_documents("coords", "travel_id", "==", stripped_id)
+            if coords_docs:
+                print(f"Encontradas {len(coords_docs)} coordenadas usando ID sin prefijo")
+        
+        # Si aún no hay resultados, intentar buscar con el campo "tid"
+        if not coords_docs:
+            coords_docs = query_documents("coords", "tid", "==", travel_id)
+            if coords_docs:
+                print(f"Encontradas {len(coords_docs)} coordenadas usando campo 'tid'")
     
-    # Ordenar por timestamp si es posible
-    try:
-        coordinates.sort(key=lambda x: x.get("timestamp", ""))
-    except Exception as e:
-        print(f"Error al ordenar coordenadas: {e}")
+    # Si encontramos coordenadas en alguna de las búsquedas anteriores
+    if coords_docs:
+        print(f"Procesando {len(coords_docs)} documentos de coordenadas encontrados")
+        coordinates = []
+        
+        # Procesar cada documento de coordenadas
+        for coord in coords_docs:
+            # Verificar que tenemos lat y lon válidos
+            lat = coord.get("lat")
+            lon = coord.get("lon")
+            
+            if lat is not None and lon is not None:
+                # Crear diccionario con la información de la coordenada
+                coord_data = {
+                    "lat": lat,
+                    "lon": lon,
+                    "timestamp": normalize_timestamp(coord.get("timestamp")),
+                    "travel_id": travel_id
+                }
+                
+                # Añadir campos adicionales si existen
+                for field in ["accuracy", "altitude", "speed", "user_id", "user_email"]:
+                    if field in coord:
+                        coord_data[field] = coord.get(field)
+                
+                coordinates.append(coord_data)
+        
+        # Ordenar por timestamp si es posible
+        try:
+            coordinates.sort(key=lambda x: x.get("timestamp", ""))
+        except Exception as e:
+            print(f"Error al ordenar coordenadas: {e}")
+        
+        print(f"Se procesaron {len(coordinates)} coordenadas válidas")
+        return coordinates
     
-    return coordinates
+    # 3. INTENTO: Si no se encontraron coordenadas en la colección "coords", 
+    # intentar extraerlas del documento del viaje
+    print(f"INTENTO 3: Extrayendo coordenadas del documento del viaje")
+    travel_doc = get_document("travels", travel_id)
+    if travel_doc and hasattr(travel_doc, 'exists') and travel_doc.exists:
+        travel_data = travel_doc.to_dict()
+        
+        # Inicializar lista para las coordenadas
+        coordinates = []
+        
+        # Verificar si es un viaje de "tracking" o un viaje completo
+        travel_type = travel_data.get("type", "")
+        print(f"Tipo de viaje: {travel_type}")
+        
+        if travel_type == "tracking":
+            # Si es un viaje de tracking, extraer las coordenadas directas
+            coords = travel_data.get("coords", {})
+            lat = coords.get("lat")
+            lon = coords.get("lon")
+            
+            if lat is not None and lon is not None:
+                print(f"Encontradas coordenadas directas en el viaje: ({lat}, {lon})")
+                coordinates.append({
+                    "lat": lat,
+                    "lon": lon,
+                    "timestamp": normalize_timestamp(travel_data.get("timestamp")),
+                    "travel_id": travel_id,
+                    "user_id": travel_data.get("user_id"),
+                    "user_email": travel_data.get("user_email"),
+                    "accuracy": travel_data.get("accuracy"),
+                    "altitude": travel_data.get("altitude"),
+                    "speed": travel_data.get("speed")
+                })
+        else:
+            # Si es un viaje completo, extraer las coordenadas iniciales y finales
+            initial_coords = travel_data.get("initial_coords", {})
+            final_coords = travel_data.get("final_coords", {})
+            
+            # Añadir coordenadas iniciales si existen
+            if initial_coords and "lat" in initial_coords and "lon" in initial_coords:
+                lat = initial_coords["lat"]
+                lon = initial_coords["lon"]
+                print(f"Encontradas coordenadas iniciales: ({lat}, {lon})")
+                coordinates.append({
+                    "lat": lat,
+                    "lon": lon,
+                    "timestamp": normalize_timestamp(travel_data.get("timestamp")),
+                    "travel_id": travel_id,
+                    "user_id": travel_data.get("user_id"),
+                    "user_email": travel_data.get("user_email")
+                })
+            
+            # Añadir coordenadas finales si existen y son diferentes de las iniciales
+            if final_coords and "lat" in final_coords and "lon" in final_coords:
+                lat = final_coords["lat"]
+                lon = final_coords["lon"]
+                
+                # Verificar si las coordenadas finales son diferentes de las iniciales
+                if not coordinates or (
+                    final_coords["lat"] != coordinates[0]["lat"] or 
+                    final_coords["lon"] != coordinates[0]["lon"]
+                ):
+                    print(f"Encontradas coordenadas finales: ({lat}, {lon})")
+                    coordinates.append({
+                        "lat": lat,
+                        "lon": lon,
+                        "timestamp": normalize_timestamp(travel_data.get("end_timestamp")),
+                        "travel_id": travel_id,
+                        "user_id": travel_data.get("user_id"),
+                        "user_email": travel_data.get("user_email")
+                    })
+        
+        # Si encontramos coordenadas en el documento del viaje, devolverlas
+        if coordinates:
+            print(f"Extraídas {len(coordinates)} coordenadas del documento del viaje")
+            return coordinates
+    
+    # Si no se encontraron coordenadas de ninguna forma
+    print(f"No se encontraron coordenadas para el viaje {travel_id}")
+    return []
 
-# Función actualizada para obtener todos los puntos de coordenadas de todos los viajes disponibles
+# Función para obtener todos los puntos de coordenadas de todos los viajes disponibles
 def get_all_travel_coordinates():
     """
     Obtiene todas las coordenadas de todos los viajes disponibles para el usuario actual.
@@ -169,19 +288,14 @@ def get_all_travel_coordinates():
     
     all_coordinates = []
     for travel in travels:
-        # Extraer el ID del viaje
+        # Extraer el ID del viaje (puede estar en 'id' o en 'travel_id')
         travel_id = travel.get("id") or travel.get("travel_id")
         if not travel_id:
             continue
         
         try:
-            # Obtener coordenadas para este viaje
+            # Obtener coordenadas para este viaje usando la función mejorada
             coordinates = get_travel_coordinates(travel_id)
-            
-            # Verificar que tenemos coordenadas (nunca debería ser None, pero por si acaso)
-            if coordinates is None:
-                print(f"get_travel_coordinates devolvió None para el viaje {travel_id}")
-                continue
                 
             if not coordinates:  # Lista vacía
                 continue
@@ -208,6 +322,7 @@ def get_all_travel_coordinates():
             print(f"Error al procesar coordenadas del viaje {travel_id}: {str(e)}")
             # Continuar con el siguiente viaje en caso de error
     
+    print(f"Total de coordenadas recopiladas: {len(all_coordinates)}")
     return all_coordinates
 
 # Función para obtener usuarios asignados a un monitor
