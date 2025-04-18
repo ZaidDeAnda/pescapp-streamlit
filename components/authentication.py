@@ -1,46 +1,59 @@
 import streamlit as st
+import time
 from services.auth_service import verify_credentials, get_current_user, logout_user, verify_session_token, reset_password
 
-# Función para iniciar sesión
 def login_user(email, password):
     try:
-        # Verificar credenciales
+        # Verify credentials and get tokens
         success, user, message = verify_credentials(email, password)
         
         if success and user:
-            # Guardar información del usuario en session_state
+            # Store tokens and user data in session state
             st.session_state["authenticated"] = True
             st.session_state["user"] = user
+            st.session_state["auth_token"] = user.get("token")
+            st.session_state["token_timestamp"] = int(time.time())
             return True, "Inicio de sesión exitoso"
         else:
             return False, message
     except Exception as e:
         return False, f"Error durante el inicio de sesión: {str(e)}"
 
-# Función para cerrar sesión
 def logout_user_component():
-    # Usar la función de logout de auth_service
-    success, message = logout_user()
+    # Clear all authentication state
+    if "authenticated" in st.session_state:
+        del st.session_state["authenticated"]
+    if "user" in st.session_state:
+        del st.session_state["user"]
+    if "auth_token" in st.session_state:
+        del st.session_state["auth_token"]
+    if "token_timestamp" in st.session_state:
+        del st.session_state["token_timestamp"]
     
+    # Call auth service logout
+    success, message = logout_user()
     return success
 
-# Función para verificar si el usuario está autenticado
 def check_authentication():
-    # Verificar si el usuario está autenticado en session_state
+    # Verify if user is authenticated in session_state
     if st.session_state.get("authenticated", False):
-        # Verificar validez del token si está disponible
-        if verify_session_token():
-            return True
-        else:
-            # Si el token no es válido, limpiar datos de sesión
-            if "authenticated" in st.session_state:
-                del st.session_state["authenticated"]
-            if "user" in st.session_state:
-                del st.session_state["user"]
-    
+        # Verify token validity
+        current_time = int(time.time())
+        token_age = current_time - st.session_state.get("token_timestamp", 0)
+        
+        # Check if token needs verification (every 30 minutes)
+        if token_age > 1800:  # 30 minutes
+            if verify_session_token():
+                # Update token timestamp
+                st.session_state["token_timestamp"] = current_time
+                return True
+            else:
+                # Clear session if token verification fails
+                logout_user_component()
+                return False
+        return True
     return False
 
-# Función para requerir autenticación
 def require_authentication():
     # Si el usuario no está autenticado, redirigir a la página de inicio
     if not check_authentication():
@@ -55,7 +68,6 @@ def require_authentication():
     
     return get_current_user()
 
-# Función para requerir rol específico
 def require_role(required_roles):
     # Primero verificar autenticación
     user = require_authentication()
@@ -79,7 +91,6 @@ def require_role(required_roles):
     
     return user
 
-# Componente para mostrar información del usuario actual
 def user_info_component():
     if check_authentication():
         user = get_current_user()
@@ -93,7 +104,6 @@ def user_info_component():
                 if logout_user_component():
                     st.rerun()
 
-# Componente para recuperar contraseña
 def password_reset_component():
     with st.expander("¿Olvidó su contraseña?"):
         email = st.text_input("Correo electrónico", key="reset_email")

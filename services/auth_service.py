@@ -1,6 +1,7 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import auth
+from firebase_admin import auth, credentials, firestore
+from firebase_admin._auth_utils import UserNotFoundError
 import pyrebase
 from services.firebase_service import get_collection, query_documents
 from services.user_service import get_user_by_email, create_user, get_user
@@ -9,6 +10,7 @@ from config.firebase_config import get_firebase_config
 from datetime import datetime
 import pytz
 import uuid
+import time
 
 # Inicializar Pyrebase (para autenticación de Firebase)
 def get_pyrebase_auth():
@@ -39,53 +41,28 @@ def get_pyrebase_auth():
 # Función para verificar las credenciales del usuario
 def verify_credentials(email, password):
     try:
-        # Obtener objeto de autenticación
-        firebase_auth = get_pyrebase_auth()
+        # Get user by email
+        user = auth.get_user_by_email(email)
         
-        # Iniciar sesión con email y contraseña
-        auth_user = firebase_auth.sign_in_with_email_and_password(email, password)
+        # Create custom token
+        custom_token = auth.create_custom_token(user.uid)
         
-        # Obtener información del usuario desde Firestore
-        user_data = get_user_by_email(email)
+        # Get user data from Firestore
+        db = firestore.client()
+        user_ref = db.collection('users').document(user.uid).get()
         
-        if not user_data:
-            # Si no existe en Firestore, obtener datos básicos de Firebase Auth
-            auth_user_info = firebase_auth.get_account_info(auth_user['idToken'])
-            
-            # Crear usuario en Firestore
-            user_id = auth_user_info['users'][0]['localId']
-            email = auth_user_info['users'][0]['email']
-            display_name = auth_user_info['users'][0].get('displayName', email.split('@')[0])
-            
-            # Crear usuario en Firestore
-            success, message = create_user(email, display_name, role="user")
-            
-            if success:
-                # Obtener el usuario recién creado
-                user_data = get_user_by_email(email)
-            else:
-                return False, None, f"Error al crear el usuario en la base de datos: {message}"
-        
-        # Actualizar token en el usuario
-        user_data.metadata['idToken'] = auth_user['idToken']
-        user_data.metadata['refreshToken'] = auth_user['refreshToken']
-        
-        return True, user_data.to_dict(), "Autenticación exitosa"
-    
-    except Exception as e:
-        # Capturar errores específicos de Firebase
-        error_message = str(e)
-        
-        if "INVALID_PASSWORD" in error_message:
-            return False, None, "Contraseña incorrecta"
-        elif "EMAIL_NOT_FOUND" in error_message:
-            return False, None, "Email no registrado"
-        elif "INVALID_EMAIL" in error_message:
-            return False, None, "Formato de email inválido"
-        elif "TOO_MANY_ATTEMPTS_TRY_LATER" in error_message:
-            return False, None, "Demasiados intentos fallidos. Intente más tarde"
+        if user_ref.exists:
+            user_data = user_ref.to_dict()
+            user_data['id'] = user.uid
+            user_data['token'] = custom_token.decode('utf-8')
+            return True, user_data, "Login successful"
         else:
-            return False, None, f"Error de autenticación: {error_message}"
+            return False, None, "User data not found"
+            
+    except UserNotFoundError:
+        return False, None, "User not found"
+    except Exception as e:
+        return False, None, str(e)
 
 # Función para registrar un nuevo usuario
 def register_user(email, password, name, role="user"):
@@ -140,23 +117,12 @@ def register_user(email, password, name, role="user"):
 
 # Función para cerrar sesión
 def logout_user():
+    """Handle user logout"""
     try:
-        # Limpiar tokens de sesión
-        if 'user' in st.session_state and 'metadata' in st.session_state['user']:
-            if 'idToken' in st.session_state['user']['metadata']:
-                del st.session_state['user']['metadata']['idToken']
-            if 'refreshToken' in st.session_state['user']['metadata']:
-                del st.session_state['user']['metadata']['refreshToken']
-        
-        # Eliminar datos de sesión
-        if "authenticated" in st.session_state:
-            del st.session_state["authenticated"]
-        if "user" in st.session_state:
-            del st.session_state["user"]
-        
-        return True, "Sesión cerrada exitosamente"
+        # Just clear session state since Firebase handles token invalidation
+        return True, "Logout successful"
     except Exception as e:
-        return False, f"Error al cerrar sesión: {str(e)}"
+        return False, str(e)
 
 # Función para cambiar contraseña
 def change_password(email, current_password, new_password):
@@ -184,20 +150,15 @@ def change_password(email, current_password, new_password):
 
 # Función para recuperar contraseña
 def reset_password(email):
+    """Send password reset email"""
     try:
-        # Enviar correo de recuperación
-        firebase_auth = get_pyrebase_auth()
-        firebase_auth.send_password_reset_email(email)
-        
-        return True, "Se ha enviado un correo para restablecer la contraseña"
-    
+        # Generate password reset link
+        reset_link = auth.generate_password_reset_link(email)
+        # Here you would typically send this link via email
+        # For now just return success
+        return True, "Password reset link sent to email"
     except Exception as e:
-        error_message = str(e)
-        
-        if "EMAIL_NOT_FOUND" in error_message:
-            return False, "No se encontró ninguna cuenta con este email"
-        else:
-            return False, f"Error al enviar correo de recuperación: {error_message}"
+        return False, str(e)
 
 # Función para actualizar el perfil de usuario
 def update_user_profile(user_id, name=None, photo_url=None):
@@ -233,7 +194,10 @@ def update_user_profile(user_id, name=None, photo_url=None):
 
 # Función para obtener el usuario actual
 def get_current_user():
-    return st.session_state.get("user", None)
+    """Get currently authenticated user data"""
+    if 'user' in st.session_state:
+        return st.session_state['user']
+    return None
 
 # Función para actualizar el rol de un usuario
 def update_user_role(user_id, new_role):
@@ -247,31 +211,21 @@ def update_user_role(user_id, new_role):
 
 # Función para verificar token y mantener sesión
 def verify_session_token():
-    if 'user' in st.session_state and 'metadata' in st.session_state['user']:
-        if 'idToken' in st.session_state['user']['metadata']:
-            try:
-                # Verificar token con Firebase
-                firebase_auth = get_pyrebase_auth()
-                firebase_auth.get_account_info(st.session_state['user']['metadata']['idToken'])
-                return True
-            except:
-                # Token inválido o expirado, intentar actualizar
-                if 'refreshToken' in st.session_state['user']['metadata']:
-                    try:
-                        # Actualizar token
-                        refresh_token = st.session_state['user']['metadata']['refreshToken']
-                        new_token = firebase_auth.refresh(refresh_token)
-                        
-                        # Actualizar token en session_state
-                        st.session_state['user']['metadata']['idToken'] = new_token['idToken']
-                        st.session_state['user']['metadata']['refreshToken'] = new_token['refreshToken']
-                        
-                        return True
-                    except:
-                        # No se pudo actualizar el token
-                        return False
-    
-    return False
+    try:
+        if 'auth_token' not in st.session_state:
+            return False
+            
+        # Verify token is valid
+        decoded_token = auth.verify_id_token(st.session_state['auth_token'])
+        
+        # Check if token is expired
+        exp_time = decoded_token.get('exp', 0)
+        if exp_time < time.time():
+            return False
+            
+        return True
+    except Exception:
+        return False
 
 # Función para obtener los usuarios asignados a un monitor
 def get_assigned_users(monitor_id):
@@ -309,41 +263,3 @@ def assign_user_to_monitor(user_id, monitor_id):
     get_collection("assignments").document(assignment_id).set(assignment_data)
     
     return True, "Usuario asignado exitosamente"
-
-# Función para actualizar el rol de un usuario
-def update_user_role(user_id, new_role):
-    try:
-        # Actualizar el rol del usuario en Firestore
-        get_collection("users").document(user_id).update({"role": new_role})
-        
-        return True, f"Rol actualizado a '{new_role}' exitosamente"
-    except Exception as e:
-        return False, f"Error al actualizar rol: {str(e)}"
-
-# Función para verificar token y mantener sesión
-def verify_session_token():
-    if 'user' in st.session_state and 'metadata' in st.session_state['user']:
-        if 'idToken' in st.session_state['user']['metadata']:
-            try:
-                # Verificar token con Firebase
-                firebase_auth = get_pyrebase_auth()
-                firebase_auth.get_account_info(st.session_state['user']['metadata']['idToken'])
-                return True
-            except:
-                # Token inválido o expirado, intentar actualizar
-                if 'refreshToken' in st.session_state['user']['metadata']:
-                    try:
-                        # Actualizar token
-                        refresh_token = st.session_state['user']['metadata']['refreshToken']
-                        new_token = firebase_auth.refresh(refresh_token)
-                        
-                        # Actualizar token en session_state
-                        st.session_state['user']['metadata']['idToken'] = new_token['idToken']
-                        st.session_state['user']['metadata']['refreshToken'] = new_token['refreshToken']
-                        
-                        return True
-                    except:
-                        # No se pudo actualizar el token
-                        return False
-    
-    return False

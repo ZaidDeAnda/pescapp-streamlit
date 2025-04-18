@@ -90,22 +90,22 @@ def main():
     with col1:
         # Botón para ir al mapa
         if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
-            st.switch_page("pages/02_🗺️_Map.py")
+            st.switch_page("pages/02_🗺️_Mapa.py")
     
     with col2:
         # Botón para ver mis viajes
         if st.button("📊 Ver Mis Viajes", use_container_width=True):
-            st.switch_page("pages/03_📊_My_Travels.py")
+            st.switch_page("pages/03_📊_Estadísticos.py")
     
     with col3:
         # Si es admin, mostrar botón de gestión de usuarios
         if user.get("role") == "admin":
             if st.button("👥 Gestionar Usuarios", use_container_width=True):
-                st.switch_page("pages/04_👥_Users.py")
+                st.switch_page("pages/05_👥_Usuarios.py")
         else:
             # Si no es admin, mostrar botón de configuración
             if st.button("⚙️ Configuración", use_container_width=True):
-                st.switch_page("pages/05_⚙️_Settings.py")
+                st.switch_page("pages/06_⚙️_Configuración.py")
     
     # Información de la aplicación
     with st.expander("ℹ️ Acerca de Travel Tracker"):

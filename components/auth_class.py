@@ -2,6 +2,7 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import auth, credentials, firestore
 from firebase_admin._auth_utils import UserNotFoundError
+import time
 
 class Authentication:
     def __init__(self):
@@ -18,6 +19,9 @@ class Authentication:
         
         # Obtain Firestore client
         self.db = firestore.client()
+        
+        # Add token refresh interval (30 minutes)
+        self.token_refresh_interval = 1800
 
     def login(self):
         """
@@ -36,8 +40,9 @@ class Authentication:
                     return
                 
                 try:
-                    # Verify user exists
+                    # Verify user exists and get custom token
                     user = auth.get_user_by_email(email)
+                    custom_token = auth.create_custom_token(user.uid)
                     
                     # Retrieve user data from Firestore
                     user_ref = self.db.collection('users').document(user.uid).get()
@@ -58,11 +63,13 @@ class Authentication:
                         }
                     else:
                         user_data = user_ref.to_dict()
-                        user_data['id'] = user.uid  # Ensure ID is available
+                        user_data['id'] = user.uid
                     
-                    # Set session state
+                    # Store tokens and user data in session state
                     st.session_state['authenticated'] = True
                     st.session_state['user'] = user_data
+                    st.session_state['auth_token'] = custom_token.decode('utf-8')
+                    st.session_state['token_timestamp'] = int(time.time())
                     
                     st.success("Inicio de sesión exitoso")
                     st.rerun()
@@ -153,15 +160,44 @@ class Authentication:
             st.session_state['show_register'] = False
             st.rerun()
 
+    def verify_token(self):
+        """
+        Verify and refresh authentication token if needed
+        """
+        try:
+            if 'auth_token' not in st.session_state:
+                return False
+            
+            current_time = int(time.time())
+            token_age = current_time - st.session_state.get('token_timestamp', 0)
+            
+            # Check if token needs refresh
+            if token_age > self.token_refresh_interval:
+                if 'user' in st.session_state and 'id' in st.session_state['user']:
+                    # Generate new token
+                    new_token = auth.create_custom_token(st.session_state['user']['id'])
+                    st.session_state['auth_token'] = new_token.decode('utf-8')
+                    st.session_state['token_timestamp'] = current_time
+                else:
+                    return False
+            
+            return True
+        except Exception:
+            return False
+
     def logout(self):
         """
         Handle user logout
         """
-        # Clear authentication state
+        # Clear all authentication state
         if "authenticated" in st.session_state:
             del st.session_state["authenticated"]
         if "user" in st.session_state:
             del st.session_state["user"]
+        if "auth_token" in st.session_state:
+            del st.session_state["auth_token"]
+        if "token_timestamp" in st.session_state:
+            del st.session_state["token_timestamp"]
         
         # Redirect to login page
         st.rerun()
@@ -171,16 +207,18 @@ class Authentication:
         Main authentication flow
         Returns True if user is authenticated, False otherwise
         """
-        # Check if user is already authenticated
-        if 'authenticated' not in st.session_state or not st.session_state['authenticated']:
-            # Show registration form if requested
-            if st.session_state.get('show_register', False):
-                self.register()
-            else:
-                self.login()
-            return False
-        
-        return True
+        # First check if user has valid token
+        if ('authenticated' in st.session_state and 
+            st.session_state['authenticated'] and 
+            self.verify_token()):
+            return True
+            
+        # If not authenticated or token invalid, show login/register
+        if st.session_state.get('show_register', False):
+            self.register()
+        else:
+            self.login()
+        return False
 
     def get_current_user(self):
         """

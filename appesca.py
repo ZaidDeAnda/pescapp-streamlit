@@ -51,23 +51,23 @@ def show_main_content(auth):
     with col1:
         st.info("🗺️ **Mapa de Viajes**\n\nVisualiza todos tus viajes en un mapa interactivo.")
         if st.button("Ver Mapa", use_container_width=True):
-            st.switch_page("pages/02_🗺️_Map.py")
+            st.switch_page("pages/02_🗺️_Mapa.py")
     
     with col2:
         st.info("📊 **Mis Viajes**\n\nConsulta y analiza tus viajes registrados.")
         if st.button("Ver Mis Viajes", use_container_width=True):
-            st.switch_page("pages/03_📊_My_Travels.py")
+            st.switch_page("pages/03_📊_Estadísticos.py")
     
     with col3:
         # Si es admin, mostrar opción de gestión de usuarios
         if user.get('role') == 'admin':
             st.info("👥 **Gestión de Usuarios**\n\nAdministra los usuarios de la aplicación.")
             if st.button("Gestionar Usuarios", use_container_width=True):
-                st.switch_page("pages/04_👥_Users.py")
+                st.switch_page("pages/05_👥_Usuarios.py")
         else:
             st.info("⚙️ **Configuración**\n\nPersonaliza tu experiencia en la aplicación.")
             if st.button("Configuración", use_container_width=True):
-                st.switch_page("pages/05_⚙️_Settings.py")
+                st.switch_page("pages/06_⚙️_Configuración.py")
     
     # Información sobre la aplicación
     with st.expander("ℹ️ Acerca de Travel Tracker"):
