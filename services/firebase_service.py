@@ -112,7 +112,7 @@ def query_documents(collection_name, field, operation, value):
     db = get_firestore()
     if db:
         try:
-            docs = db.collection(collection_name).where(field, operation, value).stream()
+            docs = db.collection(collection_name).filter(field, operation, value).stream()
             return [doc.to_dict() for doc in docs]
         except Exception as e:
             print(f"❌ Error al consultar documentos de {collection_name}: {e}")
