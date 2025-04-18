@@ -24,7 +24,7 @@ def setup_sidebar():
         if st.sidebar.button("🚪 Cerrar Sesión"):
             auth.logout()
     else:
-        st.sidebar.title("🌍 Travel Tracker")
+        st.sidebar.title("🌍 PescApp")
         st.sidebar.info("Por favor, inicie sesión para acceder a la aplicación.")
 
 # Función para mostrar un header consistente
@@ -43,7 +43,7 @@ def show_footer():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("**Travel Tracker** © 2025")
+        st.markdown("**PescApp** © 2025")
     
     with col2:
         st.markdown("Desarrollado con Streamlit y Firebase")

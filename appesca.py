@@ -1,147 +1,130 @@
 import streamlit as st
-from components.authentication import require_authentication
-from components.navigation import setup_sidebar, show_header, show_footer
-from services.travel_service import get_available_travels
-import pandas as pd
 
-# Configurar la página
+# Configurar la página 
 st.set_page_config(
-    page_title="PescApp",
-    page_icon="🏠",
+    page_title="PescaApp",
+    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Configurar la barra lateral
-setup_sidebar()
+# Importaciones
+import os
+from dotenv import load_dotenv
+from components.auth_class import Authentication
+from components.navigation import setup_sidebar, show_footer
 
-# Verificar autenticación
-user = require_authentication()
-
-# Mostrar header
-show_header(
-    "🏠 Bienvenido a PescApp",
-    f"Hola, {user.get('name', 'Usuario')}! Aquí puedes ver un resumen de tus viajes y actividad."
-)
-
-# Mostrar disclaimer solo si no ha sido descartado
-if 'disclaimer_dismissed' not in st.session_state:
-    st.session_state.disclaimer_dismissed = False
-
-if not st.session_state.disclaimer_dismissed:
-    col1, col2 = st.columns([0.9, 0.1])
-    with col1:
-        st.warning("""
-            **AVISO IMPORTANTE**
-            
-            Esta aplicación es un proyecto académico desarrollado con fines de investigación y demostración. Si bien busca 
-            promover la trazabilidad de productos pesqueros y proporcionar información valiosa para sus usuarios, no debe 
-            considerarse como una herramienta de seguridad o sistema de auxilio en tiempo real.
-
-            El Colegio de la Frontera Sur (ECOSUR) y la Universidad Autónoma de Baja California (UABC) proporcionan esta 
-            plataforma en su estado actual, sin garantías específicas sobre su funcionamiento o precisión. Las instituciones 
-            mencionadas quedan exentas de cualquier responsabilidad derivada del uso de esta aplicación.
-        """)
-    with col2:
-        if st.button("✕", help="Cerrar aviso"):
-            st.session_state.disclaimer_dismissed = True
-            st.rerun()
-
-# Enlaces a documentos legales
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("📄 Leer Términos y Condiciones", use_container_width=True):
-        st.info("Los términos y condiciones estarán disponibles próximamente.")
-with col2:
-    if st.button("🔒 Consultar Aviso de Privacidad", use_container_width=True):
-        st.info("El aviso de privacidad estará disponible próximamente.")
-
-# Obtener datos de viajes
-travels = get_available_travels()
+# Cargar variables de entorno
+load_dotenv()
 
 def main():
-    # Métricas principales
-    col1, col2, col3 = st.columns(3)
+    """Función principal de la aplicación"""
     
-    with col1:
-        st.metric(
-            label="Total de Viajes", 
-            value=len(travels),
-            delta=None
-        )
+    # Crear instancia de Authentication
+    auth = Authentication()
     
-    with col2:
-        total_distance = sum(travel.get("distance", 0) for travel in travels)
-        st.metric(
-            label="Distancia Total", 
-            value=f"{total_distance} km",
-            delta=None
-        )
+    # Verificar autenticación
+    if auth.authenticate():
+        # Usuario autenticado, mostrar contenido principal
+        setup_sidebar()
+        show_main_content(auth)
     
-    with col3:
-        role = user.get("role", "user")
-        st.metric(
-            label="Nivel de Acceso", 
-            value=role.capitalize(),
-            delta=None
-        )
+    # Mostrar pie de página
+    show_footer()
 
-    # Sección de accesos rápidos
-    st.subheader("⚡ Accesos Rápidos")
+def show_main_content(auth):
+    """Mostrar contenido principal para usuarios autenticados"""
     
-    col1, col2, col3 = st.columns(3)
+    # Obtener datos del usuario actual
+    user = auth.get_current_user()
     
-    with col1:
-        if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
-            st.switch_page("pages/02_🗺️_Mapa.py")
+    # Logos en el encabezado
+    logos_col1, logos_col2, logos_col3 = st.columns([1, 1, 1])
     
-    with col2:
-        if st.button("📊 Ver Mis Viajes", use_container_width=True):
-            st.switch_page("pages/03_📊_Estadísticos.py")
+    with logos_col1:
+        try:
+            st.image("assets/logo1.png", width=150)
+        except:
+            st.error("No se pudo cargar logo1.png")
     
-    with col3:
-        if user.get("role") == "admin":
-            if st.button("👥 Gestionar Usuarios", use_container_width=True):
-                st.switch_page("pages/05_👥_Usuarios.py")
-        else:
-            if st.button("⚙️ Configuración", use_container_width=True):
-                st.switch_page("pages/07_⚙️_Configuración.py")
-
-    # Sección de últimos viajes
-    st.subheader("📋 Últimos Viajes")
+    with logos_col2:
+        try:
+            st.image("assets/logo2.png", width=150)
+        except:
+            st.error("No se pudo cargar logo2.png")
     
-    if travels:
-        df = pd.DataFrame(travels)
-        columns_to_show = ["travel_id", "timestamp", "user_email"]
-        available_columns = [col for col in columns_to_show if col in df.columns]
-        
-        if available_columns:
-            st.dataframe(
-                df[available_columns].head(5),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("No hay datos de viajes disponibles para mostrar.")
-    else:
-        st.info("No hay viajes disponibles. ¡Comienza a registrar tus viajes!")
+    with logos_col3:
+        try:
+            st.image("assets/logo3.png", width=150)
+        except:
+            st.error("No se pudo cargar logo3.png")
+    
+    # Título de bienvenida
+    st.title(f"🌍 Bienvenido a PescApp, {user.get('name', 'Usuario')}")
+    st.markdown("Este es un proyecto académico desarrollado por investigadores de **ECOSUR** y de la **UABC** con financiamiento de **CCyTET**." \
+    "\n" \
+    "La aplicación tiene como objetivo rastrear y visualizar tus viajes de pesca, promover la trazabilidad pesquera, así como proporcionar información valiosa para la toma de decisiones.")
     
     # Información de la aplicación
+    st.write("Selecciona una opción del menú lateral para comenzar.")
+    
+    # Mostrar resumen de opciones disponibles
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.info("🗺️ **Mapa de Viajes**\n\nVisualiza todos tus viajes en un mapa interactivo.")
+        if st.button("Ver Mapa", use_container_width=True):
+            st.switch_page("pages/02_🗺️_Map.py")
+    
+    with col2:
+        st.info("📊 **Mis Viajes**\n\nConsulta y analiza tus viajes registrados.")
+        if st.button("Ver Mis Viajes", use_container_width=True):
+            st.switch_page("pages/03_📊_My_Travels.py")
+    
+    with col3:
+        # Si es admin, mostrar opción de gestión de usuarios
+        if user.get('role') == 'admin':
+            st.info("👥 **Gestión de Usuarios**\n\nAdministra los usuarios de la aplicación.")
+            if st.button("Gestionar Usuarios", use_container_width=True):
+                st.switch_page("pages/04_👥_Users.py")
+        else:
+            st.info("⚙️ **Configuración**\n\nPersonaliza tu experiencia en la aplicación.")
+            if st.button("Configuración", use_container_width=True):
+                st.switch_page("pages/05_⚙️_Settings.py")
+    
+    with col4:
+        st.info("🤖 **PePeBot**\n\nAsistente virtual para resolver tus dudas (próximamente).")
+        if st.button("Chatear con PePeBot", use_container_width=True, disabled=True):
+            st.info("Funcionalidad en desarrollo. ¡Estará disponible pronto!")
+    
+    # Información sobre la aplicación
     with st.expander("ℹ️ Acerca de PescApp"):
         st.markdown("""
-        **PescApp** es una aplicación diseñada para rastrear y visualizar tus viajes.
+        **PescApp** es una aplicación para rastrear y visualizar tus viajes.
         
         La aplicación te permite:
+        - Ver tus viajes en un mapa interactivo
+        - Analizar estadísticas de tus viajes
+        - Gestionar tu perfil y preferencias
         
-        - Visualizar tus viajes en un mapa interactivo
-        - Ver estadísticas de tus viajes
-        - Administrar usuarios y roles (solo administradores)
-        
-        Para comenzar, selecciona una de las opciones del menú lateral.
+        Selecciona una opción del menú lateral para comenzar a explorar.
         """)
+    
+    # Información de contacto con desarrolladores
+    st.divider()
+    st.subheader("Contacto con Desarrolladores")
+    
+      
+  
+    st.markdown("""
+        ### Soporte Técnico
+        - **Email:** cavieses@uabcs.mx
+        
+        """)
+    
+
+    
+    st.write("Para reportar problemas o sugerir mejoras, por favor contacta al equipo de soporte técnico.")
 
 if __name__ == "__main__":
     main()
-
-# Mostrar pie de página
-show_footer()
