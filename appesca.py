@@ -65,6 +65,37 @@ def show_main_content(auth):
     "\n" \
     "La aplicación tiene como objetivo rastrear y visualizar tus viajes de pesca, promover la trazabilidad pesquera, así como proporcionar información valiosa para la toma de decisiones.")
     
+    # Mostrar disclaimer solo si no ha sido descartado
+    if 'disclaimer_dismissed' not in st.session_state:
+        st.session_state.disclaimer_dismissed = False
+
+    if not st.session_state.disclaimer_dismissed:
+        col1, col2 = st.columns([0.9, 0.1])
+        with col1:
+            st.warning("""
+                **AVISO IMPORTANTE**
+                
+                Esta aplicación es un proyecto académico desarrollado con fines de investigación y demostración. Si bien busca 
+                promover la trazabilidad de productos pesqueros y proporcionar información valiosa para sus usuarios, no debe 
+                considerarse como una herramienta de seguridad o sistema de auxilio en tiempo real.
+
+                El Colegio de la Frontera Sur (ECOSUR) y la Universidad Autónoma de Baja California (UABC) proporcionan esta 
+                plataforma en su estado actual, sin garantías específicas sobre su funcionamiento o precisión. Las instituciones 
+                mencionadas quedan exentas de cualquier responsabilidad derivada del uso de esta aplicación.
+            """)
+        with col2:
+            if st.button("✕", help="Cerrar aviso"):
+                st.session_state.disclaimer_dismissed = True
+                st.rerun()
+
+    # Enlaces a documentos legales
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📄 Leer Términos y Condiciones", use_container_width=True):
+            st.info("Los términos y condiciones estarán disponibles próximamente.")
+    with col2:
+        if st.button("🔒 Consultar Aviso de Privacidad", use_container_width=True):
+            st.info("El aviso de privacidad estará disponible próximamente.")
     # Información de la aplicación
     st.write("Selecciona una opción del menú lateral para comenzar.")
     
