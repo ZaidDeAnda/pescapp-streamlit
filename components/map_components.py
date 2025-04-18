@@ -140,3 +140,127 @@ def heatmap_component():
     
     # Convertir coordenadas a DataFrame para facilitar el manejo
     df = pd.DataFrame(valid_coordinates)
+
+def create_travel_map(valid_coords):
+    """Creates and returns a map with travel data visualization"""
+    if len(valid_coords) == 0:
+        return None
+    
+    # Calculate map center
+    center = [valid_coords['lat'].mean(), valid_coords['lon'].mean()]
+    
+    # Create base map
+    m = folium.Map(location=center, zoom_start=10, control_scale=True)
+    
+    # Add map controls
+    folium.LayerControl().add_to(m)
+    
+    # Colors for each trip
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 
+            'lightblue', 'darkgreen', 'cadetblue', 'darkpurple', 
+            'beige', 'pink', 'gray', 'black', 'lightred', 'lightgreen']
+    
+    # Get unique travel IDs
+    travel_ids = valid_coords['travel_id'].unique()
+    
+    # Process points for each trip
+    for i, travel_id in enumerate(travel_ids):
+        # Select color for this trip
+        color = colors[i % len(colors)]
+        
+        # Filter coordinates for this trip
+        travel_coords = valid_coords[valid_coords['travel_id'] == travel_id].copy()
+        
+        # Sort by timestamp if available
+        if 'timestamp' in travel_coords.columns:
+            try:
+                travel_coords['timestamp'] = pd.to_datetime(travel_coords['timestamp'], errors='coerce')
+                travel_coords = travel_coords.sort_values('timestamp')
+            except:
+                pass
+        
+        # Create coordinate list for the line
+        line_coords = []
+        
+        # Add markers and collect coordinates for the line
+        for idx, row in travel_coords.iterrows():
+            line_coords.append([row['lat'], row['lon']])
+            
+            # Create popup text
+            popup_text = f"<b>ID de Viaje:</b> {travel_id}<br>"
+            
+            if 'user_email' in row and pd.notna(row['user_email']):
+                popup_text += f"<b>Usuario:</b> {row['user_email']}<br>"
+            
+            if 'timestamp' in row and pd.notna(row['timestamp']):
+                popup_text += f"<b>Fecha:</b> {row['timestamp']}<br>"
+            
+            if 'accuracy' in row and pd.notna(row['accuracy']):
+                popup_text += f"<b>Precisión:</b> {row['accuracy']} m<br>"
+            
+            if 'altitude' in row and pd.notna(row['altitude']):
+                popup_text += f"<b>Altitud:</b> {row['altitude']} m<br>"
+            
+            if 'speed' in row and pd.notna(row['speed']):
+                popup_text += f"<b>Velocidad:</b> {row['speed']} km/h<br>"
+            
+            # Create marker
+            folium.Marker(
+                location=[row['lat'], row['lon']],
+                popup=folium.Popup(popup_text, max_width=300),
+                tooltip=f"Viaje: {travel_id}",
+                icon=folium.Icon(color=color, icon='info-sign')
+            ).add_to(m)
+        
+        # Draw dotted line if there are at least 2 points
+        if len(line_coords) >= 2:
+            folium.PolyLine(
+                locations=line_coords,
+                color=color,
+                weight=3,
+                opacity=0.7,
+                dash_array='5, 10',
+                tooltip=f"Ruta del viaje: {travel_id}"
+            ).add_to(m)
+        
+        # Add accuracy circles if available
+        if 'accuracy' in travel_coords.columns:
+            for idx, row in travel_coords.iterrows():
+                if pd.notna(row['accuracy']) and float(row['accuracy']) > 0:
+                    folium.Circle(
+                        location=[row['lat'], row['lon']],
+                        radius=float(row['accuracy']),
+                        color=color,
+                        fill=True,
+                        fill_opacity=0.1
+                    ).add_to(m)
+    
+    return m
+
+def validate_coordinates(coords_df):
+    """Validates and filters coordinate data"""
+    if coords_df is None or len(coords_df) == 0:
+        return None
+        
+    # Verify we have valid coordinates to show
+    valid_coords = coords_df.dropna(subset=['lat', 'lon']).copy()
+    
+    if len(valid_coords) == 0:
+        return None
+        
+    # Ensure lat and lon are numeric values
+    valid_coords['lat'] = pd.to_numeric(valid_coords['lat'], errors='coerce')
+    valid_coords['lon'] = pd.to_numeric(valid_coords['lon'], errors='coerce')
+    
+    # Remove rows with non-numeric values or out of range
+    valid_coords = valid_coords[
+        (valid_coords['lat'] >= -90) & 
+        (valid_coords['lat'] <= 90) & 
+        (valid_coords['lon'] >= -180) & 
+        (valid_coords['lon'] <= 180)
+    ]
+    
+    if len(valid_coords) == 0:
+        return None
+        
+    return valid_coords
