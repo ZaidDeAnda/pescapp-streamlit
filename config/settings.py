@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuración de la aplicación
-APP_NAME = "Travel Tracker"
-APP_VERSION = "1.0.0"
+APP_NAME = "PescaApp"
+APP_VERSION = "2.0.0"
 APP_DESCRIPTION = "Una aplicación para rastrear y visualizar viajes"
 
 # Configuración de mapas
