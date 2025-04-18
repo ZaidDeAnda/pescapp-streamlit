@@ -6,7 +6,7 @@ import pandas as pd
 
 # Configurar la página
 st.set_page_config(
-    page_title="Travel Tracker - Inicio",
+    page_title="PescApp - Inicio",
     page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -20,9 +20,41 @@ user = require_authentication()
 
 # Mostrar header
 show_header(
-    "🏠 Bienvenido a Travel Tracker",
+    "🏠 Bienvenido a PescApp",
     f"Hola, {user.get('name', 'Usuario')}! Aquí puedes ver un resumen de tus viajes y actividad."
 )
+
+# Mostrar disclaimer solo si no ha sido descartado
+if 'disclaimer_dismissed' not in st.session_state:
+    st.session_state.disclaimer_dismissed = False
+
+if not st.session_state.disclaimer_dismissed:
+    col1, col2 = st.columns([0.9, 0.1])
+    with col1:
+        st.warning("""
+            **AVISO IMPORTANTE**
+            
+            Esta aplicación es un proyecto académico desarrollado con fines de investigación y demostración. Si bien busca 
+            promover la trazabilidad de productos pesqueros y proporcionar información valiosa para sus usuarios, no debe 
+            considerarse como una herramienta de seguridad o sistema de auxilio en tiempo real.
+
+            El Colegio de la Frontera Sur (ECOSUR) y la Universidad Autónoma de Baja California (UABC) proporcionan esta 
+            plataforma en su estado actual, sin garantías específicas sobre su funcionamiento o precisión. Las instituciones 
+            mencionadas quedan exentas de cualquier responsabilidad derivada del uso de esta aplicación.
+        """)
+    with col2:
+        if st.button("✕", help="Cerrar aviso"):
+            st.session_state.disclaimer_dismissed = True
+            st.rerun()
+
+# Enlaces a documentos legales
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("📄 Leer Términos y Condiciones", use_container_width=True):
+        st.info("Los términos y condiciones estarán disponibles próximamente.")
+with col2:
+    if st.button("🔒 Consultar Aviso de Privacidad", use_container_width=True):
+        st.info("El aviso de privacidad estará disponible próximamente.")
 
 # Obtener datos de viajes
 travels = get_available_travels()
@@ -56,7 +88,31 @@ def main():
             value=role.capitalize(),
             delta=None
         )
+    # Sección de accesos rápidos
+    st.subheader("⚡ Accesos Rápidos")
     
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Botón para ir al mapa
+        if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
+            st.switch_page("pages/02_🗺️_Mapa.py")
+    
+    with col2:
+        # Botón para ver mis viajes
+        if st.button("📊 Ver Mis Viajes", use_container_width=True):
+            st.switch_page("pages/03_📊_Estadísticos.py")
+    
+    with col3:
+        # Si es admin, mostrar botón de gestión de usuarios
+        if user.get("role") == "admin":
+            if st.button("👥 Gestionar Usuarios", use_container_width=True):
+                st.switch_page("pages/05_👥_Usuarios.py")
+        else:
+            # Si no es admin, mostrar botón de configuración
+            if st.button("⚙️ Configuración", use_container_width=True):
+                st.switch_page("pages/06_⚙️_Configuración.py")
+
     # Sección de últimos viajes
     st.subheader("📋 Últimos Viajes")
     
@@ -82,35 +138,12 @@ def main():
     else:
         st.info("No hay viajes disponibles. ¡Comienza a registrar tus viajes!")
     
-    # Sección de accesos rápidos
-    st.subheader("⚡ Accesos Rápidos")
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        # Botón para ir al mapa
-        if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
-            st.switch_page("pages/02_🗺️_Mapa.py")
-    
-    with col2:
-        # Botón para ver mis viajes
-        if st.button("📊 Ver Mis Viajes", use_container_width=True):
-            st.switch_page("pages/03_📊_Estadísticos.py")
-    
-    with col3:
-        # Si es admin, mostrar botón de gestión de usuarios
-        if user.get("role") == "admin":
-            if st.button("👥 Gestionar Usuarios", use_container_width=True):
-                st.switch_page("pages/05_👥_Usuarios.py")
-        else:
-            # Si no es admin, mostrar botón de configuración
-            if st.button("⚙️ Configuración", use_container_width=True):
-                st.switch_page("pages/06_⚙️_Configuración.py")
     
     # Información de la aplicación
-    with st.expander("ℹ️ Acerca de Travel Tracker"):
+    with st.expander("ℹ️ Acerca de PescApp"):
         st.markdown("""
-        **Travel Tracker** es una aplicación diseñada para rastrear y visualizar tus viajes.
+        **PescApp** es una aplicación diseñada para rastrear y visualizar tus viajes.
         
         La aplicación te permite:
         

@@ -1,86 +1,147 @@
 import streamlit as st
+from components.authentication import require_authentication
+from components.navigation import setup_sidebar, show_header, show_footer
+from services.travel_service import get_available_travels
+import pandas as pd
 
-# Configurar la página (DEBE ser la primera llamada a Streamlit)
+# Configurar la página
 st.set_page_config(
-    page_title="Travel Tracker",
-    page_icon="🌍",
+    page_title="PescApp",
+    page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# Configurar la barra lateral
+setup_sidebar()
 
-# Importaciones
-import os
-from dotenv import load_dotenv
-from components.auth_class import Authentication
-from components.navigation import setup_sidebar, show_footer
+# Verificar autenticación
+user = require_authentication()
 
-# Cargar variables de entorno
-load_dotenv()
+# Mostrar header
+show_header(
+    "🏠 Bienvenido a PescApp",
+    f"Hola, {user.get('name', 'Usuario')}! Aquí puedes ver un resumen de tus viajes y actividad."
+)
+
+# Mostrar disclaimer solo si no ha sido descartado
+if 'disclaimer_dismissed' not in st.session_state:
+    st.session_state.disclaimer_dismissed = False
+
+if not st.session_state.disclaimer_dismissed:
+    col1, col2 = st.columns([0.9, 0.1])
+    with col1:
+        st.warning("""
+            **AVISO IMPORTANTE**
+            
+            Esta aplicación es un proyecto académico desarrollado con fines de investigación y demostración. Si bien busca 
+            promover la trazabilidad de productos pesqueros y proporcionar información valiosa para sus usuarios, no debe 
+            considerarse como una herramienta de seguridad o sistema de auxilio en tiempo real.
+
+            El Colegio de la Frontera Sur (ECOSUR) y la Universidad Autónoma de Baja California (UABC) proporcionan esta 
+            plataforma en su estado actual, sin garantías específicas sobre su funcionamiento o precisión. Las instituciones 
+            mencionadas quedan exentas de cualquier responsabilidad derivada del uso de esta aplicación.
+        """)
+    with col2:
+        if st.button("✕", help="Cerrar aviso"):
+            st.session_state.disclaimer_dismissed = True
+            st.rerun()
+
+# Enlaces a documentos legales
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("📄 Leer Términos y Condiciones", use_container_width=True):
+        st.info("Los términos y condiciones estarán disponibles próximamente.")
+with col2:
+    if st.button("🔒 Consultar Aviso de Privacidad", use_container_width=True):
+        st.info("El aviso de privacidad estará disponible próximamente.")
+
+# Obtener datos de viajes
+travels = get_available_travels()
 
 def main():
-    """Función principal de la aplicación"""
-    
-    # Crear instancia de Authentication
-    auth = Authentication()
-    
-    # Verificar autenticación
-    if auth.authenticate():
-        # Usuario autenticado, mostrar contenido principal
-        setup_sidebar()
-        show_main_content(auth)
-    
-    # Mostrar pie de página
-    show_footer()
-
-def show_main_content(auth):
-    """Mostrar contenido principal para usuarios autenticados"""
-    
-    # Obtener datos del usuario actual
-    user = auth.get_current_user()
-    
-    # Título de bienvenida
-    st.title(f"🌍 Bienvenido a Travel Tracker, {user.get('name', 'Usuario')}")
-    
-    # Información de la aplicación
-    st.write("Selecciona una opción del menú lateral para comenzar.")
-    
-    # Mostrar resumen de opciones disponibles
+    # Métricas principales
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.info("🗺️ **Mapa de Viajes**\n\nVisualiza todos tus viajes en un mapa interactivo.")
-        if st.button("Ver Mapa", use_container_width=True):
+        st.metric(
+            label="Total de Viajes", 
+            value=len(travels),
+            delta=None
+        )
+    
+    with col2:
+        total_distance = sum(travel.get("distance", 0) for travel in travels)
+        st.metric(
+            label="Distancia Total", 
+            value=f"{total_distance} km",
+            delta=None
+        )
+    
+    with col3:
+        role = user.get("role", "user")
+        st.metric(
+            label="Nivel de Acceso", 
+            value=role.capitalize(),
+            delta=None
+        )
+
+    # Sección de accesos rápidos
+    st.subheader("⚡ Accesos Rápidos")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🗺️ Ver Mapa de Viajes", use_container_width=True):
             st.switch_page("pages/02_🗺️_Mapa.py")
     
     with col2:
-        st.info("📊 **Mis Viajes**\n\nConsulta y analiza tus viajes registrados.")
-        if st.button("Ver Mis Viajes", use_container_width=True):
+        if st.button("📊 Ver Mis Viajes", use_container_width=True):
             st.switch_page("pages/03_📊_Estadísticos.py")
     
     with col3:
-        # Si es admin, mostrar opción de gestión de usuarios
-        if user.get('role') == 'admin':
-            st.info("👥 **Gestión de Usuarios**\n\nAdministra los usuarios de la aplicación.")
-            if st.button("Gestionar Usuarios", use_container_width=True):
+        if user.get("role") == "admin":
+            if st.button("👥 Gestionar Usuarios", use_container_width=True):
                 st.switch_page("pages/05_👥_Usuarios.py")
         else:
-            st.info("⚙️ **Configuración**\n\nPersonaliza tu experiencia en la aplicación.")
-            if st.button("Configuración", use_container_width=True):
-                st.switch_page("pages/06_⚙️_Configuración.py")
+            if st.button("⚙️ Configuración", use_container_width=True):
+                st.switch_page("pages/07_⚙️_Configuración.py")
+
+    # Sección de últimos viajes
+    st.subheader("📋 Últimos Viajes")
     
-    # Información sobre la aplicación
-    with st.expander("ℹ️ Acerca de Travel Tracker"):
+    if travels:
+        df = pd.DataFrame(travels)
+        columns_to_show = ["travel_id", "timestamp", "user_email"]
+        available_columns = [col for col in columns_to_show if col in df.columns]
+        
+        if available_columns:
+            st.dataframe(
+                df[available_columns].head(5),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No hay datos de viajes disponibles para mostrar.")
+    else:
+        st.info("No hay viajes disponibles. ¡Comienza a registrar tus viajes!")
+    
+    # Información de la aplicación
+    with st.expander("ℹ️ Acerca de PescApp"):
         st.markdown("""
-        **Travel Tracker** es una aplicación para rastrear y visualizar tus viajes.
+        **PescApp** es una aplicación diseñada para rastrear y visualizar tus viajes.
         
         La aplicación te permite:
-        - Ver tus viajes en un mapa interactivo
-        - Analizar estadísticas de tus viajes
-        - Gestionar tu perfil y preferencias
         
-        Selecciona una opción del menú lateral para comenzar a explorar.
+        - Visualizar tus viajes en un mapa interactivo
+        - Ver estadísticas de tus viajes
+        - Administrar usuarios y roles (solo administradores)
+        
+        Para comenzar, selecciona una de las opciones del menú lateral.
         """)
 
 if __name__ == "__main__":
     main()
+
+# Mostrar pie de página
+show_footer()

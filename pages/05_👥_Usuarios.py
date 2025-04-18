@@ -8,7 +8,7 @@ from components.utils import flash_message
 
 # Configurar la página
 st.set_page_config(
-    page_title="Travel Tracker - Usuarios",
+    page_title="PescApp - Usuarios",
     page_icon="👥",
     layout="wide",
     initial_sidebar_state="expanded"

@@ -9,7 +9,7 @@ import pytz
 
 # Configurar la página
 st.set_page_config(
-    page_title="Travel Tracker - Perfil de Usuario",
+    page_title="PescApp - Perfil de Usuario",
     page_icon="👤",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -177,7 +177,7 @@ def main():
         st.write("### Consentimiento")
         
         consentimiento = st.checkbox(
-            "Doy mi consentimiento para el uso de estos datos en la aplicación Travel Tracker",
+            "Doy mi consentimiento para el uso de estos datos en la aplicación PescApp",
             value=existing_profile.get("consentimiento", False) if existing_profile else False
         )
         

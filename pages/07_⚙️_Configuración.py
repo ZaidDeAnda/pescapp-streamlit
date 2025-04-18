@@ -7,7 +7,7 @@ from services.auth_service import update_user_profile, change_password
 
 # Configurar la página (debe ser el primer comando de Streamlit)
 st.set_page_config(
-    page_title="Travel Tracker - Configuración",
+    page_title="PescApp - Configuración",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -193,9 +193,9 @@ def main():
     
     # Información adicional
     st.divider()
-    with st.expander("ℹ️ Acerca de Travel Tracker", expanded=False):
+    with st.expander("ℹ️ Acerca de PescApp", expanded=False):
         st.markdown("""
-        **Travel Tracker** v1.0.0
+        **PescApp** v1.0.0
         
         Aplicación desarrollada con:
         - Streamlit
@@ -203,7 +203,7 @@ def main():
         - Firestore
         - Python
         
-        © 2025 Travel Tracker
+        © 2025 PescApp
         """)
 
 # Ejecutar la función principal

@@ -11,7 +11,7 @@ from streamlit_folium import folium_static
 
 # Configurar la página
 st.set_page_config(
-    page_title="Travel Tracker - Visualizador de Datos",
+    page_title="PescApp - Visualizador de Datos",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
