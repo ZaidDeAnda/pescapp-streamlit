@@ -49,4 +49,4 @@ def show_footer():
         st.markdown("Desarrollado con Streamlit y Firebase")
     
     with col3:
-        st.markdown("Versión 1.0.0")
+        st.markdown("Versión 2.0.0")

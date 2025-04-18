@@ -1,42 +1,25 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-from config.firebase_config import get_firebase_config, CREDENTIALS_PATH
+from config.firebase_config import get_firebase_config
 import streamlit as st
-import os
 
 def initialize_firebase():
-    """Inicializar Firebase con credenciales del entorno o archivo"""
+    """Inicializar Firebase con credenciales de Streamlit secrets"""
     if not firebase_admin._apps:
         try:
             firebase_config = get_firebase_config()
             
-            # Intentar usar credenciales del archivo
-            if os.path.exists(CREDENTIALS_PATH):
-                cred = credentials.Certificate(CREDENTIALS_PATH)
+            # Usar el archivo temporal de credenciales creado por get_firebase_config
+            if firebase_config and "serviceAccount" in firebase_config:
+                cred = credentials.Certificate(firebase_config["serviceAccount"])
                 firebase_admin.initialize_app(cred)
-                print("✅ Firebase inicializado con credenciales locales")
+                print("✅ Firebase inicializado con credenciales de Streamlit secrets")
             else:
-                # Intentar usar credenciales del entorno
-                cred_dict = {
-                    "type": "service_account",
-                    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-                    "private_key": os.getenv("FIREBASE_PRIVATE_KEY"),
-                    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-                    "token_uri": "https://oauth2.googleapis.com/token"
-                }
-                
-                if all(cred_dict.values()):
-                    cred = credentials.Certificate(cred_dict)
-                    firebase_admin.initialize_app(cred)
-                    print("✅ Firebase inicializado con credenciales del entorno")
-                else:
-                    # Inicializar sin credenciales (solo para desarrollo)
-                    firebase_admin.initialize_app()
-                    print("⚠️ Firebase inicializado sin credenciales. Algunas funciones pueden no estar disponibles.")
+                raise Exception("No se encontraron credenciales válidas en Streamlit secrets")
         
         except Exception as e:
             print(f"❌ Error al inicializar Firebase: {e}")
-            st.error("Error al conectar con Firebase. Verifique sus credenciales.")
+            st.error("Error al conectar con Firebase. Verifique sus credenciales en .streamlit/secrets.toml")
             return None
     
     return get_firestore()

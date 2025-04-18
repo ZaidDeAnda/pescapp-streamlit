@@ -171,4 +171,4 @@ cython_debug/
 .pypirc
 .devcontainer/devcontainer.json
 creds.json
-firebase_config.py
+.streamlit/secrets.toml
